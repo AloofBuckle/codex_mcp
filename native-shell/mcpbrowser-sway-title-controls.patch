@@ -1,0 +1,291 @@
+--- sway-1.11-pristine/include/sway/tree/container.h	2025-06-09 05:09:07.000000000 +0800
++++ sway-1.11/include/sway/tree/container.h	2026-09-20 02:43:19.859332864 +0800
+@@ -76,6 +76,10 @@
+ 
+ 		struct wlr_scene_tree *border;
+ 		struct wlr_scene_tree *background;
++		struct wlr_scene_tree *controls;
++		struct wlr_scene_rect *control_bg[3];
++		struct wlr_scene_rect *control_sep[2];
++		struct sway_text_node *control_text[3];
+ 
+ 		struct sway_text_node *title_text;
+ 		struct sway_text_node *marks_text;
+@@ -119,6 +123,12 @@
+ 	double saved_x, saved_y;
+ 	double saved_width, saved_height;
+ 
++	// Native shell maximize state. This keeps the server-side titlebar visible
++	// while expanding a floating window to the usable workspace area.
++	bool mcpbrowser_maximized;
++	double mcpbrowser_saved_x, mcpbrowser_saved_y;
++	double mcpbrowser_saved_width, mcpbrowser_saved_height;
++
+ 	// Used when the view changes to CSD unexpectedly. This will be a non-B_CSD
+ 	// border which we use to restore when the view returns to SSD.
+ 	enum sway_container_border saved_border;
+--- sway-1.11-pristine/sway/tree/container.c	2025-06-09 05:09:07.000000000 +0800
++++ sway-1.11/sway/tree/container.c	2026-09-20 02:43:19.860332885 +0800
+@@ -108,6 +108,7 @@
+ 	c->title_bar.tree = alloc_scene_tree(c->scene_tree, &failed);
+ 	c->title_bar.border = alloc_scene_tree(c->title_bar.tree, &failed);
+ 	c->title_bar.background = alloc_scene_tree(c->title_bar.tree, &failed);
++	c->title_bar.controls = alloc_scene_tree(c->title_bar.tree, &failed);
+ 
+ 	// for opacity purposes we need to carfully create the scene such that
+ 	// none of our rect nodes as well as text buffers don't overlap. To do
+@@ -116,10 +117,17 @@
+ 		alloc_rect_node(c->title_bar.border, &failed);
+ 	}
+ 
+-	for (int i = 0; i < 5; i++) {
++	for (int i = 0; i < 8; i++) {
+ 		alloc_rect_node(c->title_bar.background, &failed);
+ 	}
+ 
++	for (int i = 0; i < 3; i++) {
++		c->title_bar.control_bg[i] = alloc_rect_node(c->title_bar.controls, &failed);
++	}
++	for (int i = 0; i < 2; i++) {
++		c->title_bar.control_sep[i] = alloc_rect_node(c->title_bar.controls, &failed);
++	}
++
+ 	c->border.tree = alloc_scene_tree(c->scene_tree, &failed);
+ 	c->content_tree = alloc_scene_tree(c->border.tree, &failed);
+ 
+@@ -291,6 +299,17 @@
+ 		scene_rect_set_color(rect, colors->background, alpha);
+ 	}
+ 
++	for (int i = 0; i < 3; i++) {
++		scene_rect_set_color(con->title_bar.control_bg[i], colors->background, alpha);
++		if (con->title_bar.control_text[i]) {
++			sway_text_node_set_color(con->title_bar.control_text[i], colors->text);
++			sway_text_node_set_background(con->title_bar.control_text[i], colors->background);
++		}
++	}
++	for (int i = 0; i < 2; i++) {
++		scene_rect_set_color(con->title_bar.control_sep[i], colors->border, alpha);
++	}
++
+ 	if (con->view) {
+ 		scene_rect_set_color(con->border.top, colors->child_border, alpha);
+ 		scene_rect_set_color(con->border.bottom, bottom, alpha);
+@@ -345,6 +364,9 @@
+ 	int marks_buffer_width = 0;
+ 	int width = con->title_width;
+ 	int height = container_titlebar_height();
++	int thickness = config->titlebar_border_thickness;
++	int controls_width = con->view ? height * 3 : 0;
++	int text_width = MAX(0, width - controls_width);
+ 
+ 	pixman_region32_t text_area;
+ 	pixman_region32_init(&text_area);
+@@ -357,13 +379,13 @@
+ 		if (title_align == ALIGN_RIGHT) {
+ 			h_padding = config->titlebar_h_padding;
+ 		} else {
+-			h_padding = width - config->titlebar_h_padding - marks_buffer_width;
++			h_padding = text_width - config->titlebar_h_padding - marks_buffer_width;
+ 		}
+ 
+ 		h_padding = MAX(h_padding, config->titlebar_h_padding);
+ 
+ 		int alloc_width = MIN((int)node->width,
+-			width - h_padding - config->titlebar_h_padding);
++			text_width - h_padding - config->titlebar_h_padding);
+ 		alloc_width = MAX(alloc_width, 0);
+ 
+ 		sway_text_node_set_max_width(node, alloc_width);
+@@ -379,9 +401,9 @@
+ 
+ 		int h_padding;
+ 		if (title_align == ALIGN_RIGHT) {
+-			h_padding = width - config->titlebar_h_padding - node->width;
++			h_padding = text_width - config->titlebar_h_padding - node->width;
+ 		} else if (title_align == ALIGN_CENTER) {
+-			h_padding = ((int)width - marks_buffer_width - node->width) >> 1;
++			h_padding = (text_width - marks_buffer_width - node->width) >> 1;
+ 		} else {
+ 			h_padding = config->titlebar_h_padding;
+ 		}
+@@ -389,7 +411,7 @@
+ 		h_padding = MAX(h_padding, config->titlebar_h_padding);
+ 
+ 		int alloc_width = MIN((int) node->width,
+-			width - h_padding - config->titlebar_h_padding);
++			text_width - h_padding - config->titlebar_h_padding);
+ 		alloc_width = MAX(alloc_width, 0);
+ 
+ 		sway_text_node_set_max_width(node, alloc_width);
+@@ -408,7 +430,6 @@
+ 
+ 	pixman_region32_t background, border;
+ 
+-	int thickness = config->titlebar_border_thickness;
+ 	pixman_region32_init_rect(&background,
+ 		thickness, thickness,
+ 		width - thickness * 2, height - thickness * 2);
+@@ -416,6 +437,40 @@
+ 	pixman_region32_subtract(&border, &border, &background);
+ 
+ 	pixman_region32_subtract(&background, &background, &text_area);
++	if (con->view && controls_width > 0) {
++		int controls_x = MAX(thickness, width - thickness - controls_width);
++		pixman_region32_t controls_area;
++		pixman_region32_init_rect(&controls_area, controls_x, thickness,
++			MAX(0, width - thickness - controls_x),
++			MAX(0, height - thickness * 2));
++		pixman_region32_subtract(&background, &background, &controls_area);
++		pixman_region32_fini(&controls_area);
++
++		wlr_scene_node_set_enabled(&con->title_bar.controls->node, true);
++		for (int i = 0; i < 3; i++) {
++			int x = controls_x + i * height;
++			wlr_scene_node_set_position(&con->title_bar.control_bg[i]->node,
++				x, thickness);
++			wlr_scene_rect_set_size(con->title_bar.control_bg[i], height,
++				MAX(0, height - thickness * 2));
++			if (con->title_bar.control_text[i]) {
++				struct sway_text_node *text = con->title_bar.control_text[i];
++				sway_text_node_set_max_width(text, height);
++				wlr_scene_node_set_position(text->node,
++					x + MAX(0, (height - text->width) / 2),
++					MAX(0, (height - text->height) / 2));
++			}
++		}
++		for (int i = 0; i < 2; i++) {
++			int x = controls_x + (i + 1) * height;
++			wlr_scene_node_set_position(&con->title_bar.control_sep[i]->node,
++				x, thickness);
++			wlr_scene_rect_set_size(con->title_bar.control_sep[i], 1,
++				MAX(0, height - thickness * 2));
++		}
++	} else {
++		wlr_scene_node_set_enabled(&con->title_bar.controls->node, false);
++	}
+ 	pixman_region32_fini(&text_area);
+ 
+ 	update_rect_list(con->title_bar.background, &background);
+@@ -489,6 +544,18 @@
+ 	con->title_bar.title_text = sway_text_node_create(con->title_bar.tree,
+ 		con->formatted_title, colors->text, config->pango_markup);
+ 
++	static char *control_labels[3] = {"−", "□", "×"};
++	for (int i = 0; i < 3; i++) {
++		if (con->title_bar.control_text[i]) {
++			wlr_scene_node_destroy(con->title_bar.control_text[i]->node);
++			con->title_bar.control_text[i] = NULL;
++		}
++		if (con->view) {
++			con->title_bar.control_text[i] = sway_text_node_create(
++				con->title_bar.controls, control_labels[i], colors->text, false);
++		}
++	}
++
+ 	// we always have to remake these text buffers completely for text font
+ 	// changes etc...
+ 	if (con->title_bar.marks_text) {
+--- sway-1.11-pristine/sway/input/seatop_default.c	2025-06-09 05:09:07.000000000 +0800
++++ sway-1.11/sway/input/seatop_default.c	2026-09-20 02:43:19.860332885 +0800
+@@ -14,6 +14,9 @@
+ #include "sway/server.h"
+ #include "sway/scene_descriptor.h"
+ #include "sway/tree/view.h"
++#include "sway/tree/arrange.h"
++#include "sway/tree/container.h"
++#include "sway/tree/root.h"
+ #include "sway/tree/workspace.h"
+ #include "log.h"
+ #if WLR_HAS_XWAYLAND
+@@ -103,6 +106,77 @@
+ 	return edge;
+ }
+ 
++static int titlebar_control_at(struct sway_container *cont,
++		struct sway_cursor *cursor) {
++	if (!cont || !cont->view || cont->pending.border != B_NORMAL ||
++			cont->pending.fullscreen_mode != FULLSCREEN_NONE) {
++		return -1;
++	}
++	int height = container_titlebar_height();
++	int thickness = config->titlebar_border_thickness;
++	double left = cont->pending.x + cont->pending.width - thickness - height * 3;
++	double top = cont->pending.y;
++	double x = cursor->cursor->x;
++	double y = cursor->cursor->y;
++	if (x < left || x >= cont->pending.x + cont->pending.width - thickness ||
++			y < top || y >= top + height) {
++		return -1;
++	}
++	int control = (int)((x - left) / height);
++	return control >= 0 && control < 3 ? control : -1;
++}
++
++static void toggle_titlebar_maximize(struct sway_container *cont) {
++	struct sway_container *target = container_toplevel_ancestor(cont);
++	struct sway_workspace *ws = target->pending.workspace;
++	if (!ws || !container_is_floating(target)) {
++		return;
++	}
++	if (target->mcpbrowser_maximized) {
++		target->pending.x = target->mcpbrowser_saved_x;
++		target->pending.y = target->mcpbrowser_saved_y;
++		target->pending.width = target->mcpbrowser_saved_width;
++		target->pending.height = target->mcpbrowser_saved_height;
++		target->mcpbrowser_maximized = false;
++	} else {
++		target->mcpbrowser_saved_x = target->pending.x;
++		target->mcpbrowser_saved_y = target->pending.y;
++		target->mcpbrowser_saved_width = target->pending.width;
++		target->mcpbrowser_saved_height = target->pending.height;
++		target->pending.x = ws->x;
++		target->pending.y = ws->y;
++		target->pending.width = ws->width;
++		target->pending.height = ws->height;
++		target->mcpbrowser_maximized = true;
++	}
++	arrange_container(target);
++	transaction_commit_dirty();
++}
++
++static void handle_titlebar_control(struct sway_seat *seat,
++		struct sway_container *cont, int control) {
++	struct sway_container *target = container_toplevel_ancestor(cont);
++	seat_set_focus_container(seat, cont);
++	switch (control) {
++	case 0:
++		if (!target->scratchpad) {
++			root_scratchpad_add_container(target, NULL);
++		} else if (target->pending.workspace) {
++			root_scratchpad_hide(target);
++		}
++		break;
++	case 1:
++		toggle_titlebar_maximize(target);
++		break;
++	case 2:
++		if (cont->view) {
++			view_close(cont->view);
++		}
++		break;
++	}
++	transaction_commit_dirty();
++}
++
+ /**
+  * If the cursor is over a _resizable_ edge, return the edge.
+  * Edges that can't be resized are edges of the workspace.
+@@ -361,6 +435,12 @@
+ 	bool mod_move_btn_pressed = mod_pressed && button == mod_move_btn;
+ 	bool mod_resize_btn_pressed = mod_pressed && button == mod_resize_btn;
+ 	bool titlebar_left_btn_pressed = on_titlebar && button == BTN_LEFT;
++	int titlebar_control = on_titlebar ? titlebar_control_at(cont, cursor) : -1;
++	if (titlebar_control >= 0 && button == BTN_LEFT &&
++			state == WL_POINTER_BUTTON_STATE_PRESSED) {
++		handle_titlebar_control(seat, cont, titlebar_control);
++		return;
++	}
+ 
+ 	// Handle mouse bindings
+ 	if (trigger_pointer_button_binding(seat, device, button, state, modifiers,

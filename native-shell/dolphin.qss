@@ -1,0 +1,107 @@
+* {
+  color: #eeeeee;
+  background-color: #000000;
+  selection-color: #ffffff;
+  selection-background-color: #101010;
+  outline: 0;
+  font-size: 13px;
+}
+QMainWindow, QDialog, QWidget, QFrame, QAbstractScrollArea, QAbstractItemView,
+QTreeView, QListView, QTableView, QMenuBar, QMenu, QToolBar, QStatusBar,
+QDockWidget, QTabWidget::pane {
+  background-color: #000000;
+  color: #d6d6d6;
+  border-color: #252525;
+}
+QToolBar, QMenuBar {
+  border: 0;
+  border-bottom: 1px solid #222222;
+  spacing: 2px;
+}
+QStatusBar {
+  border: 0;
+  border-top: 1px solid #222222;
+}
+QPushButton, QToolButton, QCheckBox, QRadioButton, QTabBar::tab {
+  background-color: #000000;
+  color: #cfcfcf;
+  border: 1px solid transparent;
+  border-radius: 0px;
+  padding: 4px 6px;
+}
+QPushButton:hover, QToolButton:hover, QTabBar::tab:hover, QTabBar::tab:selected {
+  border-color: #555555;
+  background-color: #0b0b0b;
+  color: #ffffff;
+}
+QLineEdit, QComboBox, QSpinBox {
+  background-color: #000000;
+  color: #e8e8e8;
+  border: 1px solid #383838;
+  border-radius: 0px;
+  padding: 4px 7px;
+}
+QLineEdit:focus, QComboBox:hover, QSpinBox:focus {
+  border-color: #777777;
+}
+QHeaderView::section {
+  background-color: #000000;
+  color: #999999;
+  border: 0;
+  border-bottom: 1px solid #2b2b2b;
+  padding: 4px 7px;
+}
+QAbstractItemView::item {
+  background-color: #000000;
+  color: #ffffff;
+  border: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+QListView, QTreeView, KItemListView, KFileItemListView {
+  color: #ffffff;
+}
+QAbstractItemView::item:hover {
+  background-color: #080808;
+  color: #ffffff;
+}
+QAbstractItemView::item:selected {
+  background-color: #0d0d0d;
+  color: #ffffff;
+  border: 1px solid #5f5f5f;
+}
+QMenu::item {
+  background-color: #000000;
+  color: #d0d0d0;
+  padding: 5px 24px 5px 8px;
+}
+QMenu::item:selected {
+  background-color: #101010;
+  color: #ffffff;
+}
+QScrollBar:vertical, QScrollBar:horizontal {
+  background: #000000;
+  border: 0;
+  margin: 0;
+}
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+  background: #494949;
+  min-height: 24px;
+  min-width: 24px;
+}
+QScrollBar::add-line, QScrollBar::sub-line,
+QScrollBar::add-page, QScrollBar::sub-page {
+  background: #000000;
+  border: 0;
+}
+QSplitter::handle {
+  background: #252525;
+  width: 1px;
+  height: 1px;
+}
+QToolTip {
+  background-color: #000000;
+  color: #dddddd;
+  border: 1px solid #444444;
+  padding: 4px;
+}

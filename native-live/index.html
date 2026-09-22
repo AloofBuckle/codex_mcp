@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>MCPBrowser Native Live</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        background: #090b0f;
+        color: #e9eef7;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #090b0f;
+      }
+      main {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        height: 100%;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 0.65rem 0.8rem;
+        background: #11151d;
+        border-bottom: 1px solid #252b36;
+        z-index: 2;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: #1c2330;
+        border: 1px solid #343e50;
+        border-radius: 0.45rem;
+        padding: 0.42rem 0.7rem;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #252e3d;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      #status {
+        margin-left: auto;
+        font-size: 0.85rem;
+        opacity: 0.78;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #stage {
+        position: relative;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000;
+        outline: none;
+      }
+      video {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: #000;
+        outline: none;
+        cursor: default;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #stage.locked video {
+        cursor: none;
+      }
+      #hint {
+        position: absolute;
+        left: 1rem;
+        bottom: 1rem;
+        padding: 0.45rem 0.65rem;
+        background: #000a;
+        border: 1px solid #ffffff26;
+        border-radius: 0.4rem;
+        font-size: 0.8rem;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      #stage:hover #hint {
+        opacity: 1;
+      }
+      .bad {
+        color: #ff9d9d;
+      }
+      .good {
+        color: #9dffb3;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <strong>Native Live</strong>
+        <button id="connect">连接</button>
+        <button id="relative" disabled>相对鼠标</button>
+        <button id="fullscreen" disabled>全屏</button>
+        <span id="status">未连接</span>
+      </header>
+      <div id="stage">
+        <video id="video" autoplay muted playsinline tabindex="0"></video>
+        <div id="hint">点击画面后键盘生效 · 相对鼠标适合游戏 · Esc 退出 Pointer Lock</div>
+      </div>
+    </main>
+    <script>
+      (() => {
+        const $ = (id) => document.getElementById(id);
+        const video = $('video'),
+          stage = $('stage'),
+          connectBtn = $('connect'),
+          relativeBtn = $('relative'),
+          fullscreenBtn = $('fullscreen'),
+          statusEl = $('status');
+        let pc = null,
+          dc = null,
+          health = null,
+          connected = false,
+          generation = 0;
+        let pendingMotion = null,
+          motionRaf = 0;
+        const authParams = new URLSearchParams(location.hash.slice(1));
+        let viewerToken = authParams.get('token') || '';
+        history.replaceState(null, '', location.pathname + location.search);
+        const nativeFetch = (url, options = {}) =>
+          fetch(url, {
+            ...options,
+            headers: { ...options.headers, ...(viewerToken ? { 'x-cua-token': viewerToken } : {}) },
+          });
+        window.addEventListener('message', (event) => {
+          if (
+            event.source === parent &&
+            event.data?.type === 'cua-viewer-session' &&
+            typeof event.data.token === 'string'
+          )
+            viewerToken = event.data.token;
+        });
+        const heldButtons = new Set();
+
+        function status(text, bad = false) {
+          statusEl.textContent = text;
+          statusEl.className = bad ? 'bad' : connected ? 'good' : '';
+        }
+        function canSend() {
+          return dc && dc.readyState === 'open';
+        }
+        function send(obj) {
+          if (canSend()) dc.send(JSON.stringify(obj));
+        }
+        function flushMotion() {
+          if (motionRaf) cancelAnimationFrame(motionRaf);
+          motionRaf = 0;
+          const next = pendingMotion;
+          pendingMotion = null;
+          if (next) send(next);
+        }
+        function resetInput() {
+          if (motionRaf) cancelAnimationFrame(motionRaf);
+          motionRaf = 0;
+          pendingMotion = null;
+          heldButtons.clear();
+          send({ t: 'reset' });
+        }
+        function closePeer() {
+          generation++;
+          resetInput();
+          connected = false;
+          try {
+            dc?.close();
+          } catch {}
+          try {
+            pc?.close();
+          } catch {}
+          dc = null;
+          pc = null;
+          video.srcObject = null;
+          connectBtn.disabled = false;
+          connectBtn.textContent = '连接';
+          relativeBtn.disabled = true;
+          fullscreenBtn.disabled = true;
+          status('未连接');
+        }
+
+        function contentRect() {
+          const r = video.getBoundingClientRect();
+          const vw = video.videoWidth || health?.width || 1920;
+          const vh = video.videoHeight || health?.height || 1080;
+          const scale = Math.min(r.width / vw, r.height / vh);
+          const w = vw * scale,
+            h = vh * scale;
+          return {
+            left: r.left + (r.width - w) / 2,
+            top: r.top + (r.height - h) / 2,
+            width: w,
+            height: h,
+            vw,
+            vh,
+          };
+        }
+        function absolutePoint(e) {
+          const r = contentRect();
+          if (
+            e.clientX < r.left ||
+            e.clientY < r.top ||
+            e.clientX >= r.left + r.width ||
+            e.clientY >= r.top + r.height
+          )
+            return null;
+          return {
+            x: Math.max(0, Math.min(r.vw - 1, ((e.clientX - r.left) * r.vw) / r.width)),
+            y: Math.max(0, Math.min(r.vh - 1, ((e.clientY - r.top) * r.vh) / r.height)),
+          };
+        }
+        function queueMotion(m) {
+          if (!pendingMotion || m.t === 'm') pendingMotion = m;
+          else if (m.t === 'mr' && pendingMotion.t === 'mr') {
+            pendingMotion.dx += m.dx;
+            pendingMotion.dy += m.dy;
+          } else pendingMotion = m;
+          if (!motionRaf)
+            motionRaf = requestAnimationFrame(() => {
+              motionRaf = 0;
+              const next = pendingMotion;
+              pendingMotion = null;
+              if (next) send(next);
+            });
+        }
+
+        async function waitIce(pc, timeout = 2500) {
+          if (pc.iceGatheringState === 'complete') return;
+          await new Promise((resolve) => {
+            const done = () => {
+              if (pc.iceGatheringState === 'complete') finish();
+            };
+            const finish = () => {
+              clearTimeout(timer);
+              pc.removeEventListener('icegatheringstatechange', done);
+              resolve();
+            };
+            const timer = setTimeout(finish, timeout);
+            pc.addEventListener('icegatheringstatechange', done);
+          });
+        }
+
+        async function connect() {
+          const mine = ++generation;
+          connectBtn.disabled = true;
+          status('检测编码能力…');
+          health = await nativeFetch('./health', { cache: 'no-store' }).then((r) => {
+            if (!r.ok) throw new Error(`health ${r.status}`);
+            return r.json();
+          });
+          if (mine !== generation) return;
+          const selected = String(health.selected_codec || '').toLowerCase();
+          const caps = RTCRtpReceiver.getCapabilities?.('video')?.codecs || [];
+          if (selected !== 'av1') throw new Error('Native Live requires AV1');
+          const wantedMime = 'video/av1';
+          const preferred = caps.filter((c) => String(c.mimeType).toLowerCase() === wantedMime);
+          if (!preferred.length)
+            throw new Error(`浏览器不支持服务端选择的 ${selected.toUpperCase()} WebRTC codec`);
+
+          status(`连接 ${health.width}×${health.height} ${selected.toUpperCase()}…`);
+          pc = new RTCPeerConnection({ iceServers: [] });
+          const localPc = pc;
+          const transceiver = pc.addTransceiver('video', { direction: 'recvonly' });
+          if (transceiver.setCodecPreferences) transceiver.setCodecPreferences(preferred);
+          dc = pc.createDataChannel('input', { ordered: true });
+          dc.addEventListener('open', () => {
+            if (mine !== generation) return;
+            connected = true;
+            relativeBtn.disabled = false;
+            fullscreenBtn.disabled = false;
+            status(`${health.width}×${health.height} · ${selected.toUpperCase()} · 输入在线`);
+            video.focus({ preventScroll: true });
+          });
+          dc.addEventListener('close', () => {
+            if (mine === generation) closePeer();
+          });
+          pc.addEventListener('track', (e) => {
+            if (mine !== generation || e.track.kind !== 'video') return;
+            video.srcObject = e.streams?.[0] || new MediaStream([e.track]);
+            video.play().catch(() => {});
+          });
+          pc.addEventListener('connectionstatechange', () => {
+            if (mine !== generation) return;
+            if (['failed', 'closed'].includes(pc.connectionState)) closePeer();
+            else if (pc.connectionState === 'disconnected') status('WebRTC 暂时断开…', true);
+          });
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          await waitIce(pc);
+          const response = await nativeFetch('./rtc', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ sdp: pc.localDescription?.sdp || '' }),
+            cache: 'no-store',
+          });
+          const answer = await response.json().catch(() => ({}));
+          if (!response.ok || !answer.sdp)
+            throw new Error(answer.error || `RTC HTTP ${response.status}`);
+          if (mine !== generation || pc !== localPc) return;
+          await pc.setRemoteDescription({ type: 'answer', sdp: answer.sdp });
+          connectBtn.textContent = '断开';
+          connectBtn.disabled = false;
+        }
+
+        connectBtn.addEventListener('click', async () => {
+          if (pc) {
+            closePeer();
+            return;
+          }
+          try {
+            await connect();
+          } catch (e) {
+            console.error(e);
+            closePeer();
+            status(e?.message || String(e), true);
+          }
+        });
+        fullscreenBtn.addEventListener('click', () => stage.requestFullscreen?.().catch(() => {}));
+        relativeBtn.addEventListener('click', () => video.requestPointerLock?.());
+        document.addEventListener('pointerlockchange', () => {
+          stage.classList.toggle('locked', document.pointerLockElement === video);
+          if (document.pointerLockElement !== video) resetInput();
+        });
+
+        video.addEventListener('contextmenu', (e) => e.preventDefault());
+        video.addEventListener('pointerdown', (e) => {
+          if (!connected) return;
+          e.preventDefault();
+          video.focus({ preventScroll: true });
+          flushMotion();
+          if (document.pointerLockElement !== video) {
+            const p = absolutePoint(e);
+            if (!p) return;
+            send({ t: 'm', ...p });
+          }
+          heldButtons.add(e.button);
+          send({ t: 'b', button: e.button, down: true });
+          try {
+            video.setPointerCapture(e.pointerId);
+          } catch {}
+        });
+        video.addEventListener('pointerup', (e) => {
+          if (!connected) return;
+          e.preventDefault();
+          flushMotion();
+          heldButtons.delete(e.button);
+          send({ t: 'b', button: e.button, down: false });
+          try {
+            video.releasePointerCapture(e.pointerId);
+          } catch {}
+        });
+        video.addEventListener('pointercancel', resetInput);
+        video.addEventListener('lostpointercapture', () => {
+          if (heldButtons.size) resetInput();
+        });
+        video.addEventListener('blur', resetInput);
+        video.addEventListener('pointermove', (e) => {
+          if (!connected) return;
+          if (document.pointerLockElement === video)
+            queueMotion({ t: 'mr', dx: e.movementX || 0, dy: e.movementY || 0 });
+          else {
+            const p = absolutePoint(e);
+            if (p) queueMotion({ t: 'm', ...p });
+          }
+        });
+        video.addEventListener(
+          'wheel',
+          (e) => {
+            if (!connected) return;
+            e.preventDefault();
+            flushMotion();
+            send({
+              t: 'w',
+              dx: Math.max(-60, Math.min(60, e.deltaX / 8)),
+              dy: Math.max(-60, Math.min(60, e.deltaY / 8)),
+            });
+          },
+          { passive: false },
+        );
+
+        function keyboardActive() {
+          return (
+            connected && (document.activeElement === video || document.pointerLockElement === video)
+          );
+        }
+        document.addEventListener(
+          'keydown',
+          (e) => {
+            if (!keyboardActive()) return;
+            e.preventDefault();
+            if (!e.repeat) send({ t: 'k', code: e.code, down: true });
+          },
+          true,
+        );
+        document.addEventListener(
+          'keyup',
+          (e) => {
+            if (!keyboardActive()) return;
+            e.preventDefault();
+            send({ t: 'k', code: e.code, down: false });
+          },
+          true,
+        );
+        window.addEventListener('blur', resetInput);
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) resetInput();
+        });
+        window.addEventListener('pagehide', closePeer);
+      })();
+    </script>
+  </body>
+</html>

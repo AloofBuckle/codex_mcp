@@ -1,0 +1,27 @@
+# Linux/systemd native runtime. Merge these overrides into your deployment YAML.
+# Set device/compositor paths for your host through this YAML or referenced environment variables.
+schemaVersion: 1
+native:
+  enabled: true
+nativeSystem:
+  runDir: /run/mcpbrowser-native
+  stateDir: /var/lib/mcpbrowser-native
+  width: 1920
+  height: 1080
+  fps: 120
+  renderNode: '${env:CUA_RENDER_NODE}'
+  kwinBinary: '${env:CUA_KWIN_BINARY}'
+  kwinLibraryPath: '${env:CUA_KWIN_LIBRARY_PATH}'
+  captureModifier: '${env:CUA_CAPTURE_MODIFIER}'
+video:
+  native:
+    oneVpl:
+      # Leave 0 unless the host has multiple oneVPL implementations and needs a pin.
+      vendorImplId: 0
+nativeLive:
+  enabled: true
+  host: 127.0.0.1
+  port: 35120
+  rtcBind: '0.0.0.0:35121'
+  publicHost: '${env:CUA_RTC_PUBLIC_HOST}'
+  publicRoute: true

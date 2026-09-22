@@ -1,0 +1,29 @@
+[package]
+name = "mcpbrowser-control"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+default-run = "mcpbrowserctl"
+
+[lib]
+name = "mcpbrowser_control"
+path = "src/lib.rs"
+
+[[bin]]
+name = "mcpbrowserctl"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+base64 = "0.22"
+libc = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+sha2 = "0.10"
+regex = "1.12"
+url = "2.5"
+
+[[bin]]
+name = "mcpbrowser-session"
+path = "src/session.rs"

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Open CUA browser control panel</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="nav">
+        <button id="back" title="Back">&#8592;</button>
+        <button id="forward" title="Forward">&#8594;</button>
+        <button id="reload" title="Reload">&#8635;</button>
+      </div>
+      <form id="address-form" class="address">
+        <input
+          id="address"
+          type="text"
+          spellcheck="false"
+          placeholder="Type a URL (https://…) or search text"
+        />
+        <button type="submit">Go</button>
+      </form>
+      <div class="right">
+        <span id="ws-status" class="pill pill-off">offline</span>
+        <span id="visibility" class="pill">visibility</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="control-summary">
+        <h1>Browser control service</h1>
+        <p class="muted"
+          >Authenticated browser controls and diagnostics. The live viewer location is declared in
+          the deployment YAML.</p
+        >
+        <a id="viewer-link" hidden>Open live viewer</a>
+        <div class="statusbar">
+          <span id="current-url">-</span>
+          <span id="dialog-bar" class="hidden"></span>
+        </div>
+        <p id="status-message" role="status" class="muted"></p>
+      </section>
+
+      <aside class="panel">
+        <section>
+          <h2>Tabs</h2>
+          <div class="row">
+            <input id="new-tab-url" placeholder="new tab url (optional)" />
+            <button id="new-tab">New</button>
+          </div>
+          <ul id="tab-list" class="list"></ul>
+        </section>
+
+        <section>
+          <h2>JS dialog</h2>
+          <div id="dialog-panel" class="muted">No pending dialog.</div>
+          <div class="row">
+            <input id="dialog-text" placeholder="prompt text" />
+            <button id="dialog-accept">Accept</button>
+            <button id="dialog-dismiss">Dismiss</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Clipboard (shared with the model)</h2>
+          <textarea id="clipboard-text" rows="4" placeholder="text/plain"></textarea>
+          <textarea id="clipboard-html" rows="2" placeholder="text/html (optional)"></textarea>
+          <div class="row">
+            <button id="clipboard-push">Write</button>
+            <button id="clipboard-pull">Read</button>
+            <button id="clipboard-paste">Paste into page</button>
+          </div>
+          <p class="muted" id="clipboard-note"></p>
+        </section>
+
+        <section>
+          <h2>Viewport</h2>
+          <div class="row">
+            <input id="viewport-width" type="number" min="200" max="4096" step="1" />
+            <span>x</span>
+            <input id="viewport-height" type="number" min="200" max="4096" step="1" />
+            <button id="viewport-apply">Apply</button>
+            <button id="viewport-reset">Reset</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Session</h2>
+          <div class="row">
+            <input id="session-name" placeholder="session label" />
+            <button id="session-save">Name</button>
+          </div>
+          <pre id="env-info" class="env"></pre>
+        </section>
+      </aside>
+    </main>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

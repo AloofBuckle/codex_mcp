@@ -1,0 +1,65 @@
+[package]
+name = "mcpbrowser-native-cua"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+mcpbrowser-media-session = { path = "../media-session" }
+mcpbrowser-control = { path = "../control-rs" }
+anyhow = "1.0"
+axum = "0.8"
+bytes = "1.10"
+futures-util = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+webrtc = "0.14.0"
+atspi = { version = "0.30", features = ["tokio"] }
+base64 = "0.22"
+fs2 = "0.4"
+libc = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+sha2 = "0.10"
+shell-words = "1.1"
+tokio = { version = "1.47", features = [
+    "io-util",
+    "macros",
+    "net",
+    "rt-multi-thread",
+    "process",
+    "signal",
+    "time",
+] }
+uuid = { version = "1.18", features = ["v4"] }
+wayland-client = "0.31"
+wayland-backend = "0.3"
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+wayland-scanner = "0.31"
+xkbcommon = "0.9"
+zbus = { version = "5.19", features = ["tokio"] }
+
+[[bin]]
+name = "mcpbrowser-cua-native-desktop"
+path = "src/bin/desktop.rs"
+
+[[bin]]
+name = "mcpbrowser-cua-native-worker"
+path = "src/bin/worker.rs"
+
+[[bin]]
+name = "mcpbrowser-wayland-pointer"
+path = "src/bin/pointer.rs"
+
+[[bin]]
+name = "mcpbrowser-cua-native-live"
+path = "src/bin/live.rs"
+
+[build-dependencies]
+bindgen = "0.72"
+pkg-config = "0.3"
+
+[patch.crates-io]
+webrtc-sctp = { path = "../vendor/webrtc-sctp-0.13.0-patched" }
+webrtc = { path = "../vendor/webrtc-0.14.0-patched" }

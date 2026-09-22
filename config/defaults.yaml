@@ -1,0 +1,315 @@
+rootDir: ${root}
+runtimeDir: ${root}/.runtime
+artifactsDir: ${root}/artifacts
+outputDir: ${artifactsDir}/exports
+profilesDir: ${runtimeDir}/profiles
+downloadsDir: ${runtimeDir}/downloads
+tmpDir: ${runtimeDir}/tmp
+logFile: ${runtimeDir}/cua.log
+logLevel: info
+guiEnabled: true
+gui:
+  host: 127.0.0.1
+  port: 38473
+  publicDir: ${root}/public
+  tokenFile: ${runtimeDir}/gui-token
+  allowedOrigins: []
+  allowedHosts: []
+  publicOrigin: ''
+  basePath: ''
+  allowInsecureRemote: false
+  tls:
+    enabled: false
+    certFile: null
+    keyFile: null
+browser:
+  id: iab
+  alias: iab
+  type: iab
+  name: Isolated Google Chrome (IAB)
+  family: chromium
+  profileName: google-chrome-default
+  executablePath: auto
+  headless: true
+  display: :99
+  spawnXvfb: true
+  viewport:
+    width: 1280
+    height: 800
+  surface:
+    width: 1280
+    height: 800
+  locale: en-US
+  maxTabs: 24
+  args: []
+  externalCdp: []
+  xvfbScreen:
+    width: 1920
+    height: 1080
+    depth: 24
+extension:
+  enabled: false
+  allowProfileExtensions: false
+  id: extension
+  name: Google Chrome Extension
+  hostName: io.mcpbrowser.bridge
+  # Set manifestKey in deployment YAML for a stable unpacked-extension identity.
+  # Set extensionId: auto to derive the Chrome extension ID from that public key.
+  extensionId: ''
+  manifestKey: ''
+  extensionDir: ${root}/extension
+  socketPath: ${runtimeDir}/extension.sock
+  requestTimeoutMs: 20000
+  autoInstallHostManifest: true
+  autoLoad: false
+  nativeHostRoots:
+    - ${home}/.config/google-chrome/NativeMessagingHosts
+    - ${home}/.config/chromium/NativeMessagingHosts
+    - ${home}/.config/google-chrome-for-testing/NativeMessagingHosts
+native:
+  enabled: false
+  socketPath: ${nativeSystem.runDir}/computer.sock
+  environmentFile: ${nativeSystem.runDir}/environment.json
+  timeoutMs: 24000
+viewer:
+  mode: standalone
+  publicOrigin: ''
+  path: /viewer/
+  tokenTtlSec: 3600
+  frameAncestors: []
+  screenshotIntervalMs: 500
+repl:
+  maxQueuedCalls: 32
+  maxOutputBlocks: 256
+  maxOutputBytes: 16777216
+  timeoutMs: 120000
+  maxTimeoutMs: 900000
+  workerMemoryMb: 768
+  maxTextChars: 400000
+  maxImageBytes: 12582912
+security:
+  maxAssetBytes: 67108864
+  maxBundleBytes: 268435456
+  maxClipboardBytes: 8388608
+ax:
+  maxNodes: 4000
+  dialogGraceMs: 0
+cdp:
+  eventBufferSize: 2000
+webmcp:
+  nativeArguments: object
+  shim: auto
+schemaVersion: 1
+tools:
+  kwinWayland: kwin_wayland
+  dbusRunSession: dbus-run-session
+  plasmashell: plasmashell
+  kwriteconfig: kwriteconfig6
+  qdbus: qdbus-qt6
+  cc: cc
+  cxx: g++
+  pkgConfig: pkg-config
+  cargo: cargo
+  tar: tar
+  ninja: ninja
+  node: auto
+  chromeCandidates:
+    - ${root}/.runtime/google-chrome-root/opt/google/chrome/google-chrome
+    - google-chrome
+    - chromium
+    - chromium-browser
+  xvfb: Xvfb
+  imageMagick: magick
+  agentCursor: ${root}/assets/neon_cursor_smooth.svg
+  nativeInput: ${runtimeDir}/bin/mcpbrowser-cua-input
+  xwindowFocus: ''
+  nativeDesktop: ${runtimeDir}/bin/mcpbrowser-cua-native-desktop
+  nativeWorker: ${runtimeDir}/bin/mcpbrowser-cua-native-worker
+  nativePointer: ${runtimeDir}/bin/mcpbrowser-wayland-pointer
+  nativeLive: ${runtimeDir}/bin/mcpbrowser-cua-native-live
+  controlBinary: ${runtimeDir}/bin/mcpbrowserctl
+  nativeSession: ${runtimeDir}/bin/mcpbrowser-session
+  sway: sway
+  swaymsg: swaymsg
+  wlrRandr: wlr-randr
+  grim: grim
+  wtype: wtype
+  dbusDaemon: dbus-daemon
+  atspiRegistry: /usr/libexec/at-spi2-registryd
+  vainfo: vainfo
+  rsync: rsync
+  systemctl: systemctl
+  systemdRun: systemd-run
+  systemdNotify: systemd-notify
+nativeSystem:
+  inputSocket: ''
+  runDir: /run/mcpbrowser-native
+  stateDir: /var/lib/mcpbrowser-native
+  width: 1920
+  height: 1080
+  fps: 120
+  scale: 1
+  output: HEADLESS-1
+  seat: seat0
+  renderNode: ''
+  renderer: auto
+  libvaDriver: ''
+  kwinBinary: ''
+  kwinLibraryPath: ''
+  captureModifier: ''
+  environment: {}
+  desktopUnit: mcpbrowser.cua-native-desktop.service
+  appPrefix: mcpbrowser-cua-app-
+video:
+  browser:
+    codec: av1
+    gop:
+      pictures: 65535
+      refDistance: 1
+      idrInterval: 0
+      strict: true
+    rateControl:
+      mode: cbr
+      targetUsage: 7
+      cbr:
+        targetKbps: 4900
+        bufferFrames: 2
+        initialDelayFrames: 2
+        bufferSizeKb: 13
+        initialDelayKb: 11
+      vbr:
+        targetKbps: 30000
+        maxKbps: 60000
+        bufferFrames: 1
+        initialDelayFrames: 1
+        bufferSizeKb: null
+        initialDelayKb: null
+        maxFrameSizeIBytes: null
+        maxFrameSizePBytes: null
+        lowDelayBrc: true
+      cqp:
+        qpi: 128
+        qpp: 128
+        qpb: 128
+      icq:
+        quality: 26
+    oneVplCapabilities:
+      selectableModes:
+        - cbr
+        - vbr
+        - cqp
+        - icq
+  native:
+    codec: av1
+    oneVpl:
+      # 0 lets oneVPL choose the matching hardware implementation.
+      # Set a non-zero VendorImplID in deployment YAML when a host has multiple implementations.
+      vendorImplId: 0
+    gop:
+      pictures: 65535
+      refDistance: 1
+      idrInterval: 0
+      strict: true
+    rateControl:
+      mode: cbr
+      targetUsage: 7
+      cbr:
+        targetKbps: 4900
+        bufferFrames: 2
+        initialDelayFrames: 2
+        bufferSizeKb: 13
+        initialDelayKb: 11
+      vbr:
+        targetKbps: 3000
+        maxKbps: 10000
+        bufferFrames: 1
+        initialDelayFrames: 1
+        bufferSizeKb: null
+        initialDelayKb: null
+        maxFrameSizeIBytes: null
+        maxFrameSizePBytes: null
+        lowDelayBrc: true
+      cqp:
+        qpi: 128
+        qpp: 128
+        qpb: 128
+      icq:
+        quality: 26
+    oneVplCapabilities:
+      selectableModes:
+        - cbr
+        - vbr
+        - cqp
+        - icq
+nativeLive:
+  enabled: false
+  host: 127.0.0.1
+  port: 35120
+  rtcBind: 0.0.0.0:35121
+  publicHost: ''
+  publicPath: /native/
+  publicRoute: false
+  captureNode: ''
+  encoderNode: ''
+  maxFps: 120
+  idleFps: 1
+  maxLagMs: 30
+  nv12Reuse: true
+nativeBrowser:
+  configPath: null
+  profilesDir: ${nativeSystem.stateDir}/data
+  downloadsDir: ${nativeSystem.stateDir}/home/Downloads
+  tmpDir: ${nativeSystem.runDir}/browser-tmp
+  logFile: ${nativeSystem.stateDir}/data/native-browser.log
+  browser:
+    id: native-iab
+    alias: native-iab
+    name: Native Google Chrome
+    profileName: native-chrome
+    headless: false
+    spawnXvfb: false
+    viewport:
+      width: 1060
+      height: 600
+    args:
+      - --ozone-platform=wayland
+nativeShell:
+  launcher: []
+  terminal: foot
+  terminalArgs: []
+  fileManager: dolphin
+  fileManagerArgs: []
+  configDir: ${nativeSystem.stateDir}/config/native-shell
+  wlrootsIncludeDir: /usr/include/wlroots-0.19
+nativePlasma:
+  enabled: false
+  socketName: plasma-wayland-0
+  width: 1920
+  height: 1080
+  scale: 1
+  refreshHz: 120
+  refreshShim: ''
+  environmentFile: ${nativeSystem.runDir}/plasma-environment
+  audioRuntimeDir: ''
+  configDir: ${nativeSystem.stateDir}/plasma-config
+  dataDir: ${nativeSystem.stateDir}/plasma-data
+  cacheDir: ${nativeSystem.stateDir}/plasma-cache
+deployment:
+  buildDir: ${root}/native-rs/target
+  user: root
+  group: root
+  unitsDir: /etc/systemd/system
+  libexecDir: /usr/local/libexec
+  controlBinary: ${deployment.libexecDir}/mcpbrowserctl
+  selinuxContext: ''
+  units:
+    daemon: mcpbrowser.service
+    desktop: ${nativeSystem.desktopUnit}
+    worker: mcpbrowser.cua-native-worker.service
+    socket: mcpbrowser.cua-native.socket
+    live: mcpbrowser.cua-native-live.service
+    theme: mcpbrowser.cua-native-theme.service
+    plasma: mcpbrowser.cua-native-plasma.service
+testing:
+  extensionChrome: ''
+  protectedUnits: []

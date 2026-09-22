@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "MCPBrowser CUA Bridge",
+  "version": "0.1.0",
+  "description": "Extension-backed Google Chrome control transport for mcpbrowser.",
+  "permissions": [
+    "debugger",
+    "tabs",
+    "nativeMessaging",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  }
+}

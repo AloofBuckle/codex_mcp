@@ -1,0 +1,21 @@
+# Copy to cua.config.yaml. All optional fields/defaults are in config/defaults.yaml.
+# Relative paths resolve beside this file. ${root} refers to the installation.
+schemaVersion: 1
+runtimeDir: '${root}/.runtime'
+gui:
+  host: 127.0.0.1
+  port: 38473
+  basePath: ''
+  # Empty: derive the origin from the listener. No Caddy/mcpmonitor needed.
+  publicOrigin: ''
+viewer:
+  mode: standalone
+browser:
+  executablePath: auto
+  headless: true
+extension:
+  enabled: false
+native:
+  enabled: false
+nativeLive:
+  enabled: false

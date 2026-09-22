@@ -1,0 +1,15 @@
+[package]
+name = "mcpbrowser-test-fixture"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[[bin]]
+name = "mcpbrowser-test-fixture"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+eframe = { version = "0.33", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
+libc = "0.2"
+serde_json = "1.0"

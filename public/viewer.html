@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head
+    ><meta charset="utf-8" /><meta
+      name="viewport"
+      content="width=device-width,initial-scale=1" /><meta
+      name="referrer"
+      content="no-referrer" /><title>CUA Live</title
+    ><link rel="stylesheet" href="./viewer.css"
+  /></head>
+  <body>
+    <header
+      ><strong>CUA Live</strong
+      ><select id="tabs" aria-label="Browser tabs"></select
+      ><button id="new">新标签</button><button id="native" hidden>原生桌面</button
+      ><button id="full">全屏</button><span id="status">连接中</span></header
+    >
+    <form id="navigation"
+      ><input id="address" aria-label="URL" placeholder="https://example.com" /><button
+        >打开</button
+      ></form
+    >
+    <main id="stage"
+      ><img id="screen" alt="Browser screenshot" tabindex="0" draggable="false"
+    /></main>
+    <script type="module" src="./viewer.js"></script> </body
+></html>

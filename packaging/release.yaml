@@ -1,0 +1,97 @@
+# Binary release inputs, separate from the administrator's runtime YAML.
+# No local configuration, token, browser profile or running service is read.
+schemaVersion: 1
+name: mcpbrowser
+release: '1'
+summary: Shared browser control and authenticated MCP service
+maintainer: MCPBrowser maintainers <maintainers@localhost>
+license: Apache-2.0
+sourceDateEpoch: 1789862400
+registry: https://registry.npmjs.org
+defaults:
+  gui:
+    host: 127.0.0.1
+    port: 38473
+  browser:
+    executablePath: auto
+    headless: true
+  extension:
+    enabled: false
+  native:
+    enabled: false
+  nativeLive:
+    enabled: false
+  viewer:
+    mode: standalone
+paths:
+  app: /usr/lib/mcpbrowser
+  command: /usr/bin/mcpbrowser
+  config: /etc/mcpbrowser/config.yaml
+  state: /var/lib/mcpbrowser
+  cache: /var/cache/mcpbrowser
+  log: /var/log/mcpbrowser
+  run: /run/mcpbrowser
+service:
+  name: mcpbrowser.service
+  user: mcpbrowser
+  group: mcpbrowser
+systemPaths:
+  unitsDir: /usr/lib/systemd/system
+  sysusersDir: /usr/lib/sysusers.d
+  tmpfilesDir: /usr/lib/tmpfiles.d
+  docsDir: /usr/share/doc
+  nologin: /usr/sbin/nologin
+  systemdRuntimeDir: /run/systemd/system
+runtime:
+  version: 24.21.0
+  baseUrl: https://nodejs.org/dist
+  architectures:
+    x64:
+      deb: amd64
+      rpm: x86_64
+      elfMachine: 62
+      sha256: fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6
+    arm64:
+      deb: arm64
+      rpm: aarch64
+      elfMachine: 183
+      sha256: 6ad1325edbdb5649c379b75a237147a666c95d4f9ae8d340fef2d1575d289ad2
+dependencies:
+  deb:
+    - libc6 (>= 2.28)
+    - libstdc++6 (>= 8)
+    - libgcc-s1
+    - libatomic1
+    - ca-certificates
+    - passwd
+    - systemd
+  rpm:
+    - glibc >= 2.28
+    - libstdc++
+    - libgcc
+    - libatomic
+    - ca-certificates
+    - shadow-utils
+    - systemd
+    - /usr/bin/systemd-sysusers
+  debRecommends:
+    - chromium | google-chrome-stable
+  rpmRecommends:
+    - chromium
+builder:
+  debImage: debian:13-slim
+  docker: docker
+  dpkgDeb: dpkg-deb
+  dpkgShlibdeps: dpkg-shlibdeps
+  rpmbuild: rpmbuild
+  cargo: cargo
+  curl: curl
+  npm: npm
+  tar: tar
+native:
+  name: mcpbrowser-native
+  binaries:
+    - mcpbrowser-cua-native-desktop
+    - mcpbrowser-cua-native-worker
+    - mcpbrowser-cua-native-live
+    - mcpbrowser-wayland-pointer

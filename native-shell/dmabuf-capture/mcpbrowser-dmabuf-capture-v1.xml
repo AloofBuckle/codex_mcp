@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="mcpbrowser_dmabuf_capture_v1">
+  <copyright>Copyright 2026 MCPBrowser contributors. SPDX-License-Identifier: MIT</copyright>
+  <interface name="mcpbrowser_dmabuf_capture_manager_v1" version="1">
+    <description summary="leased output buffers without a capture blit">
+      Private local protocol. A frame leases the actual committed output buffer.
+      The compositor MUST NOT recycle it until the client destroys the frame.
+      A client must finish all GPU reads before destroying the frame. No CPU
+      image transfer or second render target is involved.
+    </description>
+    <request name="destroy" type="destructor"/>
+    <request name="get_session">
+      <arg name="id" type="new_id" interface="mcpbrowser_dmabuf_capture_session_v1"/>
+      <arg name="output" type="object" interface="wl_output"/>
+    </request>
+  </interface>
+  <interface name="mcpbrowser_dmabuf_capture_session_v1" version="1">
+    <request name="destroy" type="destructor"/>
+    <request name="capture">
+      <description summary="lease the next damaged output commit">
+        force=1 asks the compositor for one initial/current frame. force=0
+        waits for real output damage and does not schedule a repaint. At most
+        four outstanding frame objects per session are allowed.
+      </description>
+      <arg name="id" type="new_id" interface="mcpbrowser_dmabuf_capture_frame_v1"/>
+      <arg name="force" type="uint"/>
+    </request>
+    <event name="cursor_position">
+      <description summary="cursor metadata kept out of the video framebuffer">
+        x/y are logical output pixels. visible=0 hides the client overlay.
+        Cursor motion never schedules an output repaint in the private direct
+        KWin backend.
+      </description>
+      <arg name="x" type="int"/>
+      <arg name="y" type="int"/>
+      <arg name="visible" type="uint"/>
+    </event>
+    <event name="cursor_shape">
+      <description summary="cursor shape metadata">
+        shape is the freedesktop cursor-shape name when available. Surface
+        cursors report default; the video client may use its local equivalent.
+      </description>
+      <arg name="shape" type="string"/>
+      <arg name="hotspot_x" type="int"/>
+      <arg name="hotspot_y" type="int"/>
+    </event>
+  </interface>
+  <interface name="mcpbrowser_dmabuf_capture_frame_v1" version="1">
+    <request name="destroy" type="destructor"/>
+    <event name="buffer">
+      <arg name="width" type="uint"/>
+      <arg name="height" type="uint"/>
+      <arg name="fourcc" type="uint"/>
+      <arg name="modifier_hi" type="uint"/>
+      <arg name="modifier_lo" type="uint"/>
+      <arg name="num_planes" type="uint"/>
+      <arg name="transform" type="uint"/>
+    </event>
+    <event name="plane">
+      <arg name="index" type="uint"/>
+      <arg name="fd" type="fd"/>
+      <arg name="offset" type="uint"/>
+      <arg name="stride" type="uint"/>
+      <arg name="size" type="uint"/>
+    </event>
+    <event name="fence">
+      <description summary="explicit acquire sync_file, when supplied by renderer"/>
+      <arg name="fd" type="fd"/>
+    </event>
+    <event name="damage">
+      <description summary="device-pixel region changed since the preceding output commit">
+        The event may be repeated. A forced/current frame is reported as full
+        output damage so a consumer can initialize a persistent conversion
+        surface without a separate copy.
+      </description>
+      <arg name="x" type="int"/>
+      <arg name="y" type="int"/>
+      <arg name="width" type="int"/>
+      <arg name="height" type="int"/>
+    </event>
+    <event name="ready">
+      <arg name="tv_sec_hi" type="uint"/>
+      <arg name="tv_sec_lo" type="uint"/>
+      <arg name="tv_nsec" type="uint"/>
+    </event>
+    <event name="failed">
+      <description summary="no buffer was leased; destroy this frame">
+        1=output gone, 2=unsupported buffer/crop, 3=too many leases,
+        4=acquire fence could not be exported, 5=session destroyed.
+      </description>
+      <arg name="reason" type="uint"/>
+    </event>
+  </interface>
+</protocol>

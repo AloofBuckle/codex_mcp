@@ -1,0 +1,19 @@
+# Direct HTTPS termination in Node. Supply a certificate for your own host.
+# No certificate is issued/downloaded automatically and no proxy is required.
+schemaVersion: 1
+runtimeDir: '${configDir}/state'
+gui:
+  host: 0.0.0.0
+  port: 8443
+  publicOrigin: 'https://${env:CUA_PUBLIC_HOST}:${gui.port}'
+  basePath: ''
+  tls:
+    enabled: true
+    certFile: ./certs/fullchain.pem
+    keyFile: ./certs/privkey.pem
+viewer:
+  mode: standalone
+native:
+  enabled: false
+nativeLive:
+  enabled: false
