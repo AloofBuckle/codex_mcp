@@ -453,9 +453,11 @@ export function validateConfiguration(config) {
     !/^[a-z_][a-z0-9_-]*$|^[0-9]+$/.test(config.deployment.group)
   )
     throw new Error('Invalid deployment user/group');
-  for (const value of Object.values(config.deployment.units))
+  for (const value of Object.values(config.deployment.units)) {
+    if (value === null) continue;
     if (!/^[A-Za-z0-9_.@-]+\.(service|socket)$/.test(value))
       throw new Error('Invalid systemd unit name');
+  }
   for (const value of [config.nativeSystem.output, config.nativeSystem.seat])
     if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error('Invalid native output/seat name');
   if (!/^[A-Za-z0-9_-]+$/.test(config.browser.profileName))

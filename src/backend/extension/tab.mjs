@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ExtensionLocatorBackend } from './locator.mjs';
+import { createPlaywrightSemantics } from '../playwrightSemantics.mjs';
 import { buildReadOnlyFunction, isSerializedFunction } from '../../util/fn.mjs';
 import { kHandle } from '../../util/value.mjs';
 import {
@@ -598,19 +599,26 @@ export class ExtensionTabBackend {
     };
   }
   #playwrightApi() {
-    const wrap = (steps, kind = 'locator') => new ExtensionLocatorBackend(this, steps, { kind });
-    return {
-      documentation: () => ({
-        name: 'playwright',
-        summary:
-          'Playwright-shaped facade implemented over Runtime/DOM/Input CDP commands carried by chrome.debugger.',
-        notes: [
-          'This is API-shape compatibility, not Playwright transport.',
-          'Cross-origin frame locators are not yet supported by the page-script locator engine.',
-        ],
-      }),
-      goBack: (ctx) => this.back(ctx),
-      goForward: (ctx) => this.forward(ctx),
+    const captureClip = async (clip) => {
+      const out = await this.command('Page.captureScreenshot', {
+        format: 'png',
+        clip: {
+          x: Math.max(0, Number(clip.x)),
+          y: Math.max(0, Number(clip.y)),
+          width: Math.max(1, Number(clip.width)),
+          height: Math.max(1, Number(clip.height)),
+          scale: 1,
+        },
+      });
+      return new Uint8Array(Buffer.from(out.data, 'base64'));
+    };
+    return createPlaywrightSemantics(this, {
+      notes: [
+        'Extension execution uses Runtime/DOM/Input CDP commands carried by chrome.debugger, not Playwright transport.',
+        'Cross-origin frame locators remain transport-limited because chrome.debugger page-script resolution cannot directly enter an OOPIF document.',
+      ],
+      createLocator: (steps, { kind = 'locator' } = {}) =>
+        new ExtensionLocatorBackend(this, steps, { kind }),
       evaluate: async (ctx, fn, arg) => {
         const safe = buildReadOnlyFunction(callbackSource(fn));
         return await this.runtimeValue(
@@ -618,130 +626,85 @@ export class ExtensionTabBackend {
           { awaitPromise: true },
         );
       },
-      locator: (s) => wrap([['locator', s]]),
-      getByRole: (r, o = {}) => wrap([['getByRole', r, o]]),
-      getByText: (t, o = {}) => wrap([['getByText', t, o]]),
-      getByLabel: (t, o = {}) => wrap([['getByLabel', t, o]]),
-      getByPlaceholder: (t, o = {}) => wrap([['getByPlaceholder', t, o]]),
-      getByTestId: (t) => wrap([['getByTestId', t]]),
-      frameLocator: (s) => wrap([['frameLocator', s]], 'frameLocator'),
-      waitForURL: async (ctx, wanted, o = {}) => {
-        const end = Date.now() + Number(o.timeout ?? 15000);
+      url: async () => await this.url(),
+      sleep,
+      waitForLoadState: async (state, options = {}) => {
+        const timeout = Number(options.timeout ?? 30000);
+        const end = Date.now() + timeout;
         while (Date.now() < end) {
-          const u = await this.url();
-          if (
-            typeof wanted === 'string'
-              ? u === wanted || u.startsWith(wanted)
-              : wanted instanceof RegExp
-                ? wanted.test(u)
-                : false
-          )
-            return { url: u };
-          await sleep(75);
-        }
-        throw new UnsupportedError(`waitForURL timed out (current ${this.pageUrl})`);
-      },
-      waitForLoadState: async (ctx, state = 'load', o = {}) => {
-        const end = Date.now() + Number(o.timeout ?? 30000);
-        while (Date.now() < end) {
-          const r = await this.runtimeValue('document.readyState');
-          if (
+          const ready = await this.runtimeValue('document.readyState');
+          const matched =
             state === 'domcontentloaded'
-              ? ['interactive', 'complete'].includes(r)
-              : state === 'load'
-                ? r === 'complete'
-                : r === 'complete'
-          )
-            return { state, url: await this.url() };
-          await sleep(75);
+              ? ['interactive', 'complete'].includes(ready)
+              : state === 'load' || state === 'networkidle'
+                ? ready === 'complete'
+                : false;
+          if (matched) return;
+          await sleep(Math.min(75, Math.max(1, end - Date.now())));
         }
-        throw new UnsupportedError(`waitForLoadState(${state}) timed out`);
+        throw new UnsupportedError(`waitForLoadState(${state}) timed out after ${timeout}ms`);
       },
-      waitForTimeout: async (ctx, ms) => {
-        await sleep(Math.max(0, Math.min(Number(ms) || 0, 120000)));
+      waitForEvent: async (ctx, event, options = {}) => {
+        throw new UnsupportedError(
+          `extension waitForEvent(${JSON.stringify(event)}) is not implemented by the chrome.debugger transport`,
+          { timeout: options.timeout },
+        );
       },
-      waitForEvent: async () => {
-        throw new UnsupportedError('extension waitForEvent is not implemented yet');
+      elementInfoAx: async (index) => {
+        const record = this.resolveAxIndex(index);
+        const box = await this.boxForAx(record);
+        return {
+          target: { index },
+          role: record.role,
+          axName: record.name,
+          value: record.value ?? null,
+          box,
+        };
       },
-      expectNavigation: async (ctx, action, o = {}) => {
-        const before = await this.url();
-        if (typeof action === 'string')
-          throw new UnsupportedError(
-            'string expectNavigation actions are not implemented on extension tabs',
-          );
-        const end = Date.now() + Number(o.timeout ?? 15000);
-        while (Date.now() < end) {
-          const now = await this.url();
-          if (now !== before) return { navigated: true, fromUrl: before, toUrl: now };
-          await sleep(75);
-        }
-        throw new UnsupportedError('expectNavigation timed out');
-      },
-      elementInfo: async (ctx, target) => {
-        if (typeof target === 'number') {
-          const r = this.resolveAxIndex(target);
-          const b = await this.boxForAx(r);
-          return { target: { index: target }, role: r.role, axName: r.name, box: b };
-        }
-        const loc = typeof target === 'string' ? wrap([['locator', target]]) : target;
-        return await loc.evaluate((el) => ({
-          tag: el.tagName?.toLowerCase(),
-          id: el.id || null,
-          text: (el.textContent || '').slice(0, 300),
-          box: (() => {
-            const r = el.getBoundingClientRect();
-            return { x: r.x, y: r.y, width: r.width, height: r.height };
-          })(),
-        }));
-      },
-      elementScreenshot: async (ctx, target, o = {}) => {
-        let clip;
-        if (typeof target === 'number') clip = await this.boxForAx(this.resolveAxIndex(target));
-        else {
-          const loc = typeof target === 'string' ? wrap([['locator', target]]) : target;
-          clip = await loc.evaluate((el) => {
-            const r = el.getBoundingClientRect();
-            return { x: r.x, y: r.y, width: r.width, height: r.height };
-          });
-        }
-        const out = await this.command('Page.captureScreenshot', {
-          format: 'png',
-          clip: {
-            x: Math.max(0, clip.x),
-            y: Math.max(0, clip.y),
-            width: Math.max(1, clip.width),
-            height: Math.max(1, clip.height),
-            scale: 1,
-          },
+      elementInfoPoint: async (point) => ({
+        target: { coordinates: point },
+        ...(await this.runtimeValue(
+          `(()=>{const x=${JSON.stringify(point.x)},y=${JSON.stringify(point.y)};const element=document.elementFromPoint(x,y);if(!element)return {found:false};const rect=element.getBoundingClientRect();return {found:true,tag:element.tagName.toLowerCase(),text:(element.textContent||'').trim().slice(0,200),id:element.id||null,className:typeof element.className==='string'?element.className:null,box:{x:rect.x,y:rect.y,width:rect.width,height:rect.height}};})()`,
+        )),
+      }),
+      elementScreenshotAx: async (index) => {
+        const box = await this.boxForAx(this.resolveAxIndex(index));
+        return await captureClip({
+          x: box.x - box.width / 2,
+          y: box.y - box.height / 2,
+          width: box.width,
+          height: box.height,
         });
-        const bytes = new Uint8Array(Buffer.from(out.data, 'base64'));
-        if (o.emit !== false)
-          this.manager.emitImage(ctx, bytes, {
-            mimeType: 'image/png',
-            tabId: this.id,
-            kind: 'element',
-          });
-        return bytes;
       },
-      domSnapshot: async (ctx, target) => {
-        if (target === undefined || target === null)
-          return await this.runtimeValue('document.documentElement.outerHTML');
-        if (typeof target === 'string')
-          return await wrap([['locator', target]]).evaluate((el) => el.outerHTML);
-        if (typeof target === 'number') {
-          const r = this.resolveAxIndex(target);
-          if (!r.backendDOMNodeId) throw new StaleIndexError('AX item has no DOM node');
-          const pushed = await this.command('DOM.pushNodesByBackendIdsToFrontend', {
-            backendNodeIds: [r.backendDOMNodeId],
-          });
-          const nodeId = pushed?.nodeIds?.[0];
-          if (!nodeId) throw new StaleIndexError('AX node is no longer present');
-          return (await this.command('DOM.getOuterHTML', { nodeId })).outerHTML ?? null;
-        }
-        return await target.evaluate((el) => el.outerHTML);
+      elementScreenshotPoint: async (point, options = {}) => {
+        const size = Number(options.size ?? 200);
+        return await captureClip({
+          x: point.x - size / 2,
+          y: point.y - size / 2,
+          width: size,
+          height: size,
+        });
       },
-      [kHandle]: { kind: 'cua-api' },
-    };
+      elementScreenshotLocator: async (locator) => {
+        const box = await locator.evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        });
+        return await captureClip(box);
+      },
+      domSnapshotRoot: async () =>
+        await this.runtimeValue('document.documentElement.outerHTML'),
+      domSnapshotAx: async (index) => {
+        const record = this.resolveAxIndex(index);
+        if (!record.backendDOMNodeId) throw new StaleIndexError('AX item has no DOM node');
+        const pushed = await this.command('DOM.pushNodesByBackendIdsToFrontend', {
+          backendNodeIds: [record.backendDOMNodeId],
+        });
+        const nodeId = pushed?.nodeIds?.[0];
+        if (!nodeId) throw new StaleIndexError('AX node is no longer present');
+        return (await this.command('DOM.getOuterHTML', { nodeId })).outerHTML ?? null;
+      },
+    });
   }
   #cuaApi() {
     return {

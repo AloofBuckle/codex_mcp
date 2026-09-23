@@ -4,7 +4,7 @@ use mcpbrowser_native_cua::{DesktopInfo, ensure_dir, run_dir, state_dir};
 use serde_json::json;
 use std::collections::HashMap;
 use std::fs;
-use std::os::unix::fs::{FileTypeExt, MetadataExt};
+use std::os::unix::fs::{FileTypeExt, MetadataExt, symlink};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -267,6 +267,24 @@ fn exported_env(env: &HashMap<String, String>) -> HashMap<String, String> {
         .collect()
 }
 
+fn link_audio_runtime(run: &Path) -> Result<()> {
+    let audio = setting("MCPBROWSER_PLASMA_AUDIO_RUNTIME");
+    if audio.is_empty() {
+        return Ok(());
+    }
+    for name in ["pipewire-0", "pipewire-0-manager"] {
+        let source = Path::new(&audio).join(name);
+        if !source.exists() {
+            continue;
+        }
+        let target = run.join(name);
+        let _ = fs::remove_file(&target);
+        symlink(&source, &target)
+            .with_context(|| format!("link {} -> {}", target.display(), source.display()))?;
+    }
+    Ok(())
+}
+
 async fn run() -> Result<()> {
     let run = run_dir();
     let state = state_dir();
@@ -312,6 +330,11 @@ async fn run() -> Result<()> {
             let _ = fs::remove_file(entry.path());
         }
     }
+    // The native desktop is ordered after the configured headless audio
+    // service. Publish its PipeWire sockets into the private runtime before
+    // KWin starts so both the compositor and the later Plasma session see the
+    // same audio server from their first initialization.
+    link_audio_runtime(&run)?;
 
     let mut env = base_env(&run, &state);
     // D-Bus activation snapshots the daemon's startup environment. The socket
@@ -473,6 +496,7 @@ async fn run() -> Result<()> {
             "--no-lockscreen",
             "--no-global-shortcuts",
             "--xwayland",
+            "--exit-with-session",
             &session,
         ],
         &compositor_env,

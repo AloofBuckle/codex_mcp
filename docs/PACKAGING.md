@@ -10,10 +10,10 @@ The package manager may fetch declared OS dependencies during installation.
 
 ```sh
 # Debian / Ubuntu, on the machine where the service will run:
-sudo apt install ./mcpbrowser_0.1.0-1_amd64.deb
+sudo apt install ./mcpbrowser_0.1.1-1_amd64.deb
 
 # Fedora / other compatible RPM systems:
-sudo dnf install ./mcpbrowser-0.1.0-1.x86_64.rpm
+sudo dnf install ./mcpbrowser-0.1.1-1.x86_64.rpm
 ```
 
 Package filenames depend on the release version and architecture. Review

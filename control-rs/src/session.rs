@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 fn selected_config() -> Option<PathBuf> {
@@ -40,7 +40,7 @@ fn configure_plasma(config: &serde_json::Value, envs: &BTreeMap<String, String>)
             "General",
             "--key",
             "ColorScheme",
-            "BreezeDark",
+            "MCPBrowserBlack",
         ],
         vec![
             "--file",
@@ -59,6 +59,33 @@ fn configure_plasma(config: &serde_json::Value, envs: &BTreeMap<String, String>)
             "--key",
             "Theme",
             "breeze-dark",
+        ],
+        vec![
+            "--file",
+            "plasmarc",
+            "--group",
+            "Theme",
+            "--key",
+            "name",
+            "mcpbrowser-black",
+        ],
+        vec![
+            "--file",
+            "kwinrc",
+            "--group",
+            "org.kde.kdecoration2",
+            "--key",
+            "library",
+            "org.kde.breeze",
+        ],
+        vec![
+            "--file",
+            "kwinrc",
+            "--group",
+            "org.kde.kdecoration2",
+            "--key",
+            "theme",
+            "Breeze",
         ],
         vec![
             "--file",
@@ -94,6 +121,34 @@ fn configure_plasma(config: &serde_json::Value, envs: &BTreeMap<String, String>)
     ] {
         command_ok(&kwrite, &args, envs)?;
     }
+    command_ok(
+        &kwrite,
+        &[
+            "--file",
+            "kdeglobals",
+            "--group",
+            "General",
+            "--key",
+            "ColorSchemeHash",
+            "--delete",
+            "",
+        ],
+        envs,
+    )?;
+    command_ok(
+        &kwrite,
+        &[
+            "--file",
+            "kdeglobals",
+            "--group",
+            "KDE",
+            "--key",
+            "LookAndFeelPackage",
+            "--delete",
+            "",
+        ],
+        envs,
+    )?;
     for action in ["suspend", "hibernate", "reboot", "shutdown"] {
         command_ok(
             &kwrite,
@@ -112,6 +167,53 @@ fn configure_plasma(config: &serde_json::Value, envs: &BTreeMap<String, String>)
         )?;
     }
     Ok(())
+}
+
+fn configure_plasma_shell(
+    config: &serde_json::Value,
+    envs: &BTreeMap<String, String>,
+) -> Result<()> {
+    let qdbus = get_string(config, "tools.qdbus")?;
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let ready = Command::new(&qdbus)
+            .args(["org.kde.plasmashell", "/PlasmaShell"])
+            .env_clear()
+            .envs(envs)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success());
+        if ready {
+            break;
+        }
+        if Instant::now() >= deadline {
+            bail!("timeout waiting for org.kde.plasmashell")
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+
+    command_ok(
+        &qdbus,
+        &[
+            "org.kde.plasmashell",
+            "/PlasmaShell",
+            "org.kde.PlasmaShell.evaluateScript",
+            r##"var ds=desktops(); for (var i=0;i<ds.length;i++){ ds[i].wallpaperPlugin="org.kde.color"; ds[i].currentConfigGroup=["Wallpaper","org.kde.color","General"]; ds[i].writeConfig("Color","#000000"); }"##,
+        ],
+        envs,
+    )?;
+    command_ok(
+        &qdbus,
+        &[
+            "org.kde.plasmashell",
+            "/PlasmaShell",
+            "org.kde.PlasmaShell.evaluateScript",
+            r#"var ps=panels(); for(var i=0;i<ps.length;i++){ ps[i].floating=false; var ws=ps[i].widgets(); for(var j=0;j<ws.length;j++){ if(ws[j].type==="org.kde.plasma.icontasks"){ ws[j].currentConfigGroup=["General"]; ws[j].writeConfig("launchers","applications:google-chrome.desktop,applications:mcpbrowser-files.desktop,applications:mcpbrowser-terminal.desktop"); } } }"#,
+        ],
+        envs,
+    )
 }
 
 fn publish_environment(config: &serde_json::Value, envs: &BTreeMap<String, String>) -> Result<()> {
@@ -178,24 +280,15 @@ fn link_audio(config: &serde_json::Value, envs: &BTreeMap<String, String>) -> Re
     Ok(())
 }
 
-fn wait_parent_or_child(mut child: Option<Child>) -> Result<()> {
-    let original_parent = unsafe { libc::getppid() };
-    loop {
-        if let Some(c) = child.as_mut() {
-            if let Some(status) = c.try_wait()? {
-                if status.success() {
-                    return Ok(());
-                }
-                bail!("Plasma shell exited with {status}")
-            }
+fn wait_child(child: Option<Child>) -> Result<()> {
+    let Some(mut child) = child else {
+        loop {
+            thread::sleep(Duration::from_secs(60));
         }
-        let parent = unsafe { libc::getppid() };
-        if parent <= 1 || parent != original_parent {
-            if let Some(c) = child.as_mut() {
-                let _ = c.kill();
-                let _ = c.wait();
-            }
-            return Ok(());
+    };
+    loop {
+        if let Some(status) = child.try_wait()? {
+            bail!("Plasma shell exited with {status}")
         }
         thread::sleep(Duration::from_millis(250));
     }
@@ -212,13 +305,10 @@ fn main() -> Result<()> {
     envs.insert("KDE_SESSION_VERSION".into(), "6".into());
     envs.insert("QT_QPA_PLATFORM".into(), "wayland".into());
 
-    for key in [
-        "nativePlasma.configDir",
-        "nativePlasma.dataDir",
-        "nativePlasma.cacheDir",
-    ] {
-        let path = PathBuf::from(get_string(&config.value, key)?);
-        fs::create_dir_all(path)?;
+    let plasma_config_dir = PathBuf::from(get_string(&config.value, "nativePlasma.configDir")?);
+    fs::create_dir_all(&plasma_config_dir)?;
+    for key in ["nativePlasma.dataDir", "nativePlasma.cacheDir"] {
+        fs::create_dir_all(PathBuf::from(get_string(&config.value, key)?))?;
     }
     if let Some(home) = envs.get("HOME") {
         fs::create_dir_all(Path::new(home).join("Downloads"))?;
@@ -227,9 +317,16 @@ fn main() -> Result<()> {
     publish_environment(&config.value, &envs)?;
 
     if !get_bool(&config.value, "nativePlasma.enabled")? {
-        return wait_parent_or_child(None);
+        return wait_child(None);
     }
-    configure_plasma(&config.value, &envs)?;
+    // Plasma appearance and panel defaults are persistent state. Apply them
+    // only as a versioned migration, never as a per-session policy that would
+    // overwrite later user customization on every desktop restart.
+    let migration_marker = plasma_config_dir.join(".mcpbrowser-ui-layout-v1");
+    let migrate = !migration_marker.is_file();
+    if migrate {
+        configure_plasma(&config.value, &envs)?;
+    }
     let plasmashell = get_string(&config.value, "tools.plasmashell")?;
     let child = Command::new(&plasmashell)
         .env_clear()
@@ -237,5 +334,9 @@ fn main() -> Result<()> {
         .stdin(Stdio::null())
         .spawn()
         .with_context(|| format!("start {plasmashell}"))?;
-    wait_parent_or_child(Some(child))
+    if migrate {
+        configure_plasma_shell(&config.value, &envs)?;
+        write_atomic(&migration_marker, b"1\n", 0o600)?;
+    }
+    wait_child(Some(child))
 }

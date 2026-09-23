@@ -868,6 +868,9 @@ pub fn validate(config: &Value) -> Result<()> {
         .and_then(Value::as_object)
         .ok_or_else(|| anyhow!("deployment.units must be a mapping"))?;
     for value in units.values() {
+        if value.is_null() {
+            continue;
+        }
         let Some(value) = value.as_str() else {
             bail!("invalid systemd unit name")
         };
@@ -1130,6 +1133,7 @@ pub fn native_environment(config: &LoadedConfig) -> Result<BTreeMap<String, Stri
             "nativePlasma.socketName",
         ),
         ("MCPBROWSER_CUA_INPUT_SOCKET", "nativeSystem.inputSocket"),
+        ("MCPBROWSER_NATIVE_SESSION", "tools.nativeSession"),
         ("MCPBROWSER_NATIVE_DESKTOP_UNIT", "nativeSystem.desktopUnit"),
         ("MCPBROWSER_NATIVE_APP_PREFIX", "nativeSystem.appPrefix"),
         ("MCPBROWSER_NATIVE_ATSPI_REGISTRY", "tools.atspiRegistry"),

@@ -14,7 +14,8 @@ import { pipeline } from 'node:stream/promises';
 import { confinedDirectory, exclusiveWrite } from '../util/filesystem.mjs';
 import { AxObserver, AX_ACTION_DOCUMENTATION } from './ax.mjs';
 import { LocatorBackend } from './locatorBackend.mjs';
-import { evaluateReadOnly, evaluationPolicy } from './evaluate.mjs';
+import { evaluateReadOnly } from './evaluate.mjs';
+import { createPlaywrightSemantics } from './playwrightSemantics.mjs';
 import {
   asPoint,
   normalizeAddress,
@@ -1202,82 +1203,18 @@ function createAxApi(tab) {
 }
 
 function createPlaywrightApi(tab) {
-  const wrap = (steps, kind = 'locator') => new LocatorBackend(tab, steps, { kind });
-  return {
-    documentation: () => ({
-      name: 'playwright',
-      summary: 'Playwright-style navigation, locators, waits, expectations and DOM inspection.',
-      methods: [
-        'goBack',
-        'goForward',
-        'evaluate',
-        'locator',
-        'getByRole',
-        'getByText',
-        'getByLabel',
-        'getByPlaceholder',
-        'getByTestId',
-        'frameLocator',
-        'waitForURL',
-        'waitForLoadState',
-        'waitForTimeout',
-        'waitForEvent',
-        'expectNavigation',
-        'elementInfo',
-        'elementScreenshot',
-        'domSnapshot',
-      ],
-      evaluation: evaluationPolicy(),
-      notes: [
-        'locator.evaluate/evaluateAll are READ-ONLY DOM evaluation (AST validated + shadowed globals).',
-        'Functions and regular expressions serialize across the MCP boundary; regular functions and async callbacks are supported.',
-      ],
-    }),
-    goBack: (ctx) => tab.back(ctx),
-    goForward: (ctx) => tab.forward(ctx),
+  return createPlaywrightSemantics(tab, {
+    notes: ['IAB/external-CDP executes locator plans through Playwright.'],
+    createLocator: (steps, { kind = 'locator' } = {}) =>
+      new LocatorBackend(tab, steps, { kind }),
     evaluate: (ctx, fn, arg) => evaluateReadOnly(tab.page, fn, arg),
-    locator: (selector) => wrap([{ op: 'locator', args: [selector] }]),
-    getByRole: (role, options) => wrap([{ op: 'getByRole', args: [role, options ?? {}] }]),
-    getByText: (text, options) => wrap([{ op: 'getByText', args: [text, options ?? {}] }]),
-    getByLabel: (text, options) => wrap([{ op: 'getByLabel', args: [text, options ?? {}] }]),
-    getByPlaceholder: (text, options) =>
-      wrap([{ op: 'getByPlaceholder', args: [text, options ?? {}] }]),
-    getByTestId: (testId) => wrap([{ op: 'getByTestId', args: [testId] }]),
-    frameLocator: (selector) => wrap([{ op: 'frameLocator', args: [selector] }], 'frameLocator'),
-    waitForURL: async (ctx, url, options = {}) => {
-      const timeout = options.timeout ?? 15000;
-      const predicate =
-        typeof url === 'string'
-          ? (candidate) => candidate.href === url || candidate.href.startsWith(url)
-          : url instanceof RegExp
-            ? (candidate) => url.test(candidate.href)
-            : url;
-      try {
-        await tab.page.waitForURL(predicate, {
-          timeout,
-          waitUntil: options.waitUntil ?? 'domcontentloaded',
-        });
-      } catch (error) {
-        throw new UnsupportedError(
-          `waitForURL timed out after ${timeout}ms (current url: ${tab.page.url()}): ${error.message}`,
-        );
-      }
-      return { url: tab.page.url() };
-    },
-    waitForLoadState: async (ctx, state = 'load', options = {}) => {
+    url: async () => tab.page.url(),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    waitForLoadState: async (state, options = {}) => {
       await tab.page.waitForLoadState(state, { timeout: options.timeout ?? 30000 });
-      return { state, url: tab.page.url() };
     },
-    waitForTimeout: async (ctx, ms) => {
-      const value = Number(ms ?? 0);
-      if (!Number.isFinite(value) || value < 0 || value > 120000)
-        throw new ValidationError('waitForTimeout(ms) must be 0..120000');
-      await new Promise((resolve) => setTimeout(resolve, value));
-      return { waitedMs: value };
-    },
-    waitForEvent: async (ctx, kind, options = {}) => {
+    waitForEvent: async (ctx, event, options = {}) => {
       const timeout = options.timeout ?? 15000;
-      const event = String(kind ?? '');
       if (event === 'download') {
         const existing = [...tab.downloads].reverse().find((item) => !item.delivered);
         const record =
@@ -1336,178 +1273,73 @@ function createPlaywrightApi(tab) {
         throw new UnsupportedError(`no popup opened within ${timeout}ms`);
       }
       throw new UnsupportedError(
-        `waitForEvent supports download, filechooser, dialog, popup (received ${JSON.stringify(kind)})`,
+        `waitForEvent supports download, filechooser, dialog, popup (received ${JSON.stringify(event)})`,
       );
     },
-    expectNavigation: async (ctx, action, options = {}) => {
-      const timeout = options.timeout ?? 15000;
-      const fromUrl = tab.page.url();
-      const before = Date.now();
-      if (typeof action === 'function') {
-        await action();
-      } else if (action && typeof action === 'object' && action.__cuaFn) {
-        throw new ValidationError(
-          'Navigation callbacks must execute in the persistent REPL, never in the privileged browser host',
-        );
-      } else if (typeof action === 'string') {
-        const [name, ...rest] = action.split(/\s+/);
-        const command = tab.playwright[name];
-        if (typeof command !== 'function')
-          throw new ValidationError(
-            `expectNavigation does not know the action ${JSON.stringify(name)}`,
-          );
-        await command(ctx, ...rest);
-      } else if (action && typeof action === 'object') {
-        const command = tab.playwright[action.type];
-        if (typeof command !== 'function')
-          throw new ValidationError(
-            `expectNavigation does not know the action ${JSON.stringify(action.type)}`,
-          );
-        await command(ctx, ...(action.args ?? []));
-      }
-      const deadline = Date.now() + timeout;
-      while (Date.now() < deadline) {
-        if (tab.page.url() !== fromUrl) {
-          await tab.page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
-          return {
-            navigated: true,
-            fromUrl,
-            toUrl: tab.page.url(),
-            durationMs: Date.now() - before,
-          };
-        }
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-      throw new UnsupportedError(
-        `expectNavigation: URL did not change from ${fromUrl} within ${timeout}ms`,
-      );
+    elementInfoAx: async (index) => {
+      const record = tab.observer.resolveIndex(index);
+      const box = await tab.observer.boxFor(record, { scrollIntoView: false });
+      const info = await tab.describeAxElement(record);
+      return {
+        target: { index },
+        role: record.entry.role,
+        axName: record.entry.name,
+        box: { x: box.x, y: box.y, width: box.width, height: box.height },
+        ...info,
+      };
     },
-    elementInfo: async (ctx, target, options = {}) => {
-      if (typeof target === 'number') {
-        const record = tab.observer.resolveIndex(target);
-        const box = await tab.observer.boxFor(record, { scrollIntoView: false });
-        const info = await tab.describeAxElement(record);
-        return {
-          target: { index: target },
-          role: record.entry.role,
-          axName: record.entry.name,
-          box: { x: box.x, y: box.y, width: box.width, height: box.height },
-          ...info,
-        };
-      }
-      if (Array.isArray(target)) {
-        const point = asPoint(target);
-        return {
-          target: { coordinates: point },
-          ...(await tab.page.evaluate(({ x, y }) => {
-            const element = document.elementFromPoint(x, y);
-            if (!element) return { found: false };
-            const rect = element.getBoundingClientRect();
-            return {
-              found: true,
-              tag: element.tagName.toLowerCase(),
-              text: (element.textContent ?? '').trim().slice(0, 200),
-              id: element.id || null,
-              className: typeof element.className === 'string' ? element.className : null,
-              box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-            };
-          }, point)),
-        };
-      }
-      const locator =
-        typeof target === 'string'
-          ? new LocatorBackend(tab, [{ op: 'locator', args: [target] }])
-          : target;
-      if (!(locator instanceof LocatorBackend))
-        throw new ValidationError(
-          'elementInfo(target) expects an AX index, [x, y], a selector string or a locator',
-        );
-      return await locator.evaluate((element) => {
+    elementInfoPoint: async (point) => ({
+      target: { coordinates: point },
+      ...(await tab.page.evaluate(({ x, y }) => {
+        const element = document.elementFromPoint(x, y);
+        if (!element) return { found: false };
         const rect = element.getBoundingClientRect();
-        const styles = getComputedStyle(element);
         return {
+          found: true,
           tag: element.tagName.toLowerCase(),
+          text: (element.textContent ?? '').trim().slice(0, 200),
           id: element.id || null,
           className: typeof element.className === 'string' ? element.className : null,
-          text: (element.textContent ?? '').trim().slice(0, 300),
-          value: 'value' in element ? String(element.value) : null,
           box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-          visible:
-            styles.visibility !== 'hidden' &&
-            styles.display !== 'none' &&
-            rect.width > 0 &&
-            rect.height > 0,
-          enabled: !element.disabled,
-          attributes: Object.fromEntries(
-            [...element.attributes].map((attribute) => [attribute.name, attribute.value]),
-          ),
         };
+      }, point)),
+    }),
+    elementScreenshotAx: async (index) => {
+      const record = tab.observer.resolveIndex(index);
+      const box = await tab.observer.boxFor(record);
+      return await tab.page.screenshot({
+        type: 'png',
+        clip: {
+          x: Math.max(0, box.x - box.width / 2),
+          y: Math.max(0, box.y - box.height / 2),
+          width: Math.max(1, box.width),
+          height: Math.max(1, box.height),
+        },
       });
     },
-    elementScreenshot: async (ctx, target, options = {}) => {
-      let bytes;
-      if (typeof target === 'number') {
-        const record = tab.observer.resolveIndex(target);
-        const box = await tab.observer.boxFor(record);
-        bytes = await tab.page.screenshot({
-          type: 'png',
-          clip: {
-            x: Math.max(0, box.x - box.width / 2),
-            y: Math.max(0, box.y - box.height / 2),
-            width: Math.max(1, box.width),
-            height: Math.max(1, box.height),
-          },
-        });
-      } else if (Array.isArray(target)) {
-        const point = asPoint(target);
-        const size = Number(options.size ?? 200);
-        bytes = await tab.page.screenshot({
-          type: 'png',
-          clip: {
-            x: Math.max(0, point.x - size / 2),
-            y: Math.max(0, point.y - size / 2),
-            width: size,
-            height: size,
-          },
-        });
-      } else {
-        const locator =
-          typeof target === 'string'
-            ? new LocatorBackend(tab, [{ op: 'locator', args: [target] }])
-            : target;
-        if (!(locator instanceof LocatorBackend))
-          throw new ValidationError(
-            'elementScreenshot(target) expects an AX index, [x, y], selector or locator',
-          );
-        bytes = await (await locator.resolve()).screenshot({ type: 'png' });
-      }
-      if (options.emit !== false)
-        tab.manager.emitImage(ctx, bytes, {
-          mimeType: 'image/png',
-          tabId: tab.id,
-          kind: 'element',
-        });
-      return bytes;
+    elementScreenshotPoint: async (point, options = {}) => {
+      const size = Number(options.size ?? 200);
+      return await tab.page.screenshot({
+        type: 'png',
+        clip: {
+          x: Math.max(0, point.x - size / 2),
+          y: Math.max(0, point.y - size / 2),
+          width: size,
+          height: size,
+        },
+      });
     },
-    domSnapshot: async (ctx, target, options = {}) => {
-      if (target === undefined || target === null) {
-        return options.html === false
-          ? await tab.page.evaluate(() => document.documentElement.outerHTML)
-          : await tab.page.content();
-      }
-      if (typeof target === 'number') {
-        const record = tab.observer.resolveIndex(target);
-        return await tab.observer.callOnElement(record, 'function(){ return this.outerHTML; }');
-      }
-      const locator =
-        typeof target === 'string'
-          ? new LocatorBackend(tab, [{ op: 'locator', args: [target] }])
-          : target;
-      if (!(locator instanceof LocatorBackend))
-        throw new ValidationError('domSnapshot(target) expects an index, selector or locator');
-      return await (await locator.resolve()).evaluate((element) => element.outerHTML);
+    elementScreenshotLocator: async (locator) =>
+      await (await locator.resolve()).screenshot({ type: 'png' }),
+    domSnapshotRoot: async (options = {}) =>
+      options.html === false
+        ? await tab.page.evaluate(() => document.documentElement.outerHTML)
+        : await tab.page.content(),
+    domSnapshotAx: async (index) => {
+      const record = tab.observer.resolveIndex(index);
+      return await tab.observer.callOnElement(record, 'function(){ return this.outerHTML; }');
     },
-  };
+  });
 }
 
 async function waitForSignal(tab, signalName, timeout, getValue) {

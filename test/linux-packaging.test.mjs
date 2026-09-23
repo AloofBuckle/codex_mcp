@@ -50,6 +50,17 @@ test('packaging entrypoints are Rust control-plane commands, not JS or shell hel
   assert.doesNotMatch(source, /packaging\/cli\.mjs|scripts\/package-linux|scripts\/package-native/);
 });
 
+test('packaging normalizes install-tree permissions for the non-root service user', () => {
+  const source = fs.readFileSync(path.join(ROOT, 'control-rs/src/package.rs'), 'utf8');
+  assert.match(
+    source,
+    /write_root\(&payload, &cfg\.paths\.config, yaml\.as_bytes\(\), 0o644\)/,
+    'root-owned packaged config must remain readable by the service account',
+  );
+  assert.match(source, /set_directory_mode_recursive\(&payload, 0o755\)/);
+  assert.match(source, /permissions\.set_mode\(0o755\)/);
+});
+
 test('Rust packaged CLI help/version do not require local runtime configuration', () => {
   buildControl();
   const version = execFileSync(CONTROL, ['version'], { cwd: ROOT, encoding: 'utf8' });

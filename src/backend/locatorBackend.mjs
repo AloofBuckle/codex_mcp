@@ -6,30 +6,24 @@
  * boundary and lets regex options, chaining (and/or/filter) and frame locators
  * work exactly like the underlying API.
  */
-import { kHandle } from '../util/value.mjs';
 import { UnsupportedError, ValidationError } from '../util/errors.mjs';
 import { evaluateReadOnly, evaluateReadOnlyAll } from './evaluate.mjs';
+import { LocatorSemantics } from './locatorSemantics.mjs';
 import path from 'node:path';
 import { slugify } from '../util/format.mjs';
 import { fetchSessionBytes } from '../util/filesystem.mjs';
 
-export class LocatorBackend {
-  static [kHandle] = { kind: 'locator' };
-
+export class LocatorBackend extends LocatorSemantics {
   constructor(tab, steps = [], { kind = 'locator' } = {}) {
-    this[kHandle] = { kind };
-    this.tab = tab;
-    this.steps = steps;
-    this.kind = kind;
-    Object.defineProperty(this, 'tab', { enumerable: false });
+    super(tab, steps, { kind });
   }
 
   get page() {
     return this.tab.page;
   }
 
-  #extend(op, args, kind = 'locator') {
-    return new LocatorBackend(this.tab, [...this.steps, { op, args }], { kind });
+  spawn(steps, { kind = this.kind } = {}) {
+    return new LocatorBackend(this.tab, steps, { kind });
   }
 
   async resolve() {
@@ -91,51 +85,6 @@ export class LocatorBackend {
       /* locator action below reports the canonical error */
     }
     return await locator.boundingBox().catch(() => null);
-  }
-
-  // --- chaining -----------------------------------------------------------
-  locator(selector) {
-    return this.#extend('locator', [selector]);
-  }
-  getByRole(role, options = {}) {
-    return this.#extend('getByRole', [role, options]);
-  }
-  getByText(text, options = {}) {
-    return this.#extend('getByText', [text, options]);
-  }
-  getByLabel(text, options = {}) {
-    return this.#extend('getByLabel', [text, options]);
-  }
-  getByPlaceholder(text, options = {}) {
-    return this.#extend('getByPlaceholder', [text, options]);
-  }
-  getByTestId(testId) {
-    return this.#extend('getByTestId', [testId]);
-  }
-  first() {
-    return this.#extend('first', []);
-  }
-  last() {
-    return this.#extend('last', []);
-  }
-  nth(index) {
-    const value = Number(index);
-    if (!Number.isInteger(value)) throw new ValidationError('nth(index) requires an integer');
-    return this.#extend('nth', [value]);
-  }
-  and(other) {
-    return this.#extend('and', [other]);
-  }
-  or(other) {
-    return this.#extend('or', [other]);
-  }
-  filter(options = {}) {
-    return this.#extend('filter', [options]);
-  }
-  frameLocator(selector) {
-    return new LocatorBackend(this.tab, [...this.steps, { op: 'frameLocator', args: [selector] }], {
-      kind: 'frameLocator',
-    });
   }
 
   // --- actions ------------------------------------------------------------
@@ -343,11 +292,6 @@ export class LocatorBackend {
   async count() {
     return (await this.#locator()).count();
   }
-  async all() {
-    const locator = await this.#locator();
-    const total = await locator.count();
-    return Array.from({ length: total }, (_, index) => this.nth(index));
-  }
   async textContent(options = {}) {
     return (await this.#locator()).textContent(options);
   }
@@ -434,19 +378,6 @@ export class LocatorBackend {
     });
   }
 
-  describe() {
-    const parts = this.steps.map((step) => {
-      const [first] = step.args ?? [];
-      return typeof first === 'string' || typeof first === 'number'
-        ? `${step.op}(${JSON.stringify(first)})`
-        : step.op;
-    });
-    return `${this.kind}:${parts.join(' > ') || 'self'}`;
-  }
-
-  toJSON() {
-    return { kind: this.kind, description: this.describe() };
-  }
 }
 
 function describeAnchor(anchor) {

@@ -200,6 +200,18 @@ test(
             '(await extTab.screenshot({emit:false})).byteLength',
           );
           assert.ok(screenshotBytes > 1000);
+          await client.ok('await extTab.playwright.waitForTimeout(1)');
+          const elementInfo = await client.value('extTab.playwright.elementInfo("#name")');
+          assert.equal(elementInfo.tag, 'input');
+          assert.equal(elementInfo.id, 'name');
+          const navigation = await client.value(
+            'extTab.playwright.expectNavigation(async()=>{await extTab.playwright.getByRole("link",{name:"Second page",exact:true}).click()},{timeout:3000})',
+          );
+          assert.equal(navigation.navigated, true);
+          assert.match(navigation.toUrl, /\/second$/);
+          await client.ok(
+            'await extTab.playwright.goBack(); await extTab.playwright.waitForLoadState("domcontentloaded")',
+          );
           const liveId = await client.value('extTab.id');
           const finalized = await client.value('extBrowser.tabs.finalize({keep:[]})');
           assert.deepEqual(finalized.closedTabs, []);

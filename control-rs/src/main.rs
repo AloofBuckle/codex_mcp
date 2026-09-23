@@ -741,14 +741,18 @@ fn deploy(config: &LoadedConfig, destination: &Path) -> Result<Vec<PathBuf>> {
         .get("live")
         .and_then(Value::as_str)
         .ok_or_else(|| anyhow!("deployment.units.live missing"))?;
+    let audio_name = units.get("audio").and_then(Value::as_str);
     let cfg_s = cfg.display().to_string();
     let socket_path = get_string(&config.value, "native.socketPath")?;
     let daemon = format!(
         "[Unit]\nDescription=CUA browser and authenticated HTTP MCP service\nAfter=network.target\n\n[Service]\nType=exec\n{common}ExecStart={}\nRestart=on-failure\nRestartSec=2\n\n[Install]\nWantedBy=multi-user.target\n",
         command(&["serve", "--config", &cfg_s])
     );
+    let desktop_audio_dependencies = audio_name
+        .map(|name| format!("Wants={name}\nAfter=network.target {name}\n"))
+        .unwrap_or_else(|| "After=network.target\n".to_string());
     let desktop = format!(
-        "[Unit]\nDescription=MCPBrowser native desktop\nAfter=network.target\n\n[Service]\nType=notify\nNotifyAccess=main\n{common}ExecStart={}\nRestart=on-failure\nRestartSec=2\nTimeoutStartSec=35\nKillMode=control-group\n\n[Install]\nWantedBy=multi-user.target\n",
+        "[Unit]\nDescription=MCPBrowser native desktop\n{desktop_audio_dependencies}\n[Service]\nType=notify\nNotifyAccess=main\n{common}ExecStart={}\nRestart=on-failure\nRestartSec=2\nTimeoutStartSec=35\nKillMode=control-group\n\n[Install]\nWantedBy=multi-user.target\n",
         command(&["native-run", "desktop", "--config", &cfg_s])
     );
     let socket = format!(
@@ -774,11 +778,31 @@ fn deploy(config: &LoadedConfig, destination: &Path) -> Result<Vec<PathBuf>> {
         rendered.push(path);
     }
     if get_bool(&config.value, "nativePlasma.enabled")? {
-        let apps = destination.join("plasma-data/applications");
+        let plasma_data = destination.join("plasma-data");
+        let apps = plasma_data.join("applications");
         fs::create_dir_all(&apps)?;
         let cfg_s = cfg.display().to_string();
+
+        let browser_exec = PathBuf::from(get_string(&config.value, "browser.executablePath")?);
+        if let Some(parent) = browser_exec.parent() {
+            let icon = parent.join("product_logo_128.png");
+            if icon.is_file() {
+                let icon_dir = plasma_data.join("icons/hicolor/128x128/apps");
+                fs::create_dir_all(&icon_dir)?;
+                fs::copy(icon, icon_dir.join("google-chrome.png"))?;
+            }
+        }
+        let exec = format!("{} native-app browser --config {}", exe.display(), cfg_s);
+        let browser_desktop = format!(
+            "[Desktop Entry]\nType=Application\nName=Google Chrome\nExec={exec}\nIcon=google-chrome\nStartupWMClass=google-chrome\nTerminal=false\nCategories=Network;WebBrowser;\n"
+        );
+        write_atomic(
+            &apps.join("google-chrome.desktop"),
+            browser_desktop.as_bytes(),
+            0o644,
+        )?;
+
         for (role, title, icon) in [
-            ("browser", "Browser", "web-browser"),
             ("files", "Files", "system-file-manager"),
             ("terminal", "Terminal", "utilities-terminal"),
         ] {
@@ -792,6 +816,18 @@ fn deploy(config: &LoadedConfig, destination: &Path) -> Result<Vec<PathBuf>> {
                 0o644,
             )?;
         }
+
+        let theme_source = config
+            .root
+            .join("native-shell/plasma-theme/mcpbrowser-black");
+        let theme_destination = plasma_data.join("plasma/desktoptheme/mcpbrowser-black");
+        copy_dir(&theme_source, &theme_destination)?;
+        let color_dir = plasma_data.join("color-schemes");
+        fs::create_dir_all(&color_dir)?;
+        fs::copy(
+            theme_source.join("colors"),
+            color_dir.join("MCPBrowserBlack.colors"),
+        )?;
     }
 
     let origin = get_string(&config.value, "gui.publicOrigin")?;
@@ -874,6 +910,10 @@ fn native_install(config: &LoadedConfig, apply: bool, start: bool) -> Result<()>
         if generated.is_dir() {
             let destination = PathBuf::from(get_string(&config.value, "nativePlasma.dataDir")?);
             copy_dir(&generated, &destination)?;
+            let legacy_browser = destination.join("applications/mcpbrowser-browser.desktop");
+            if legacy_browser.is_file() {
+                fs::remove_file(legacy_browser)?;
+            }
         }
     }
     let systemctl = ensure_executable(config, "tools.systemctl")?;

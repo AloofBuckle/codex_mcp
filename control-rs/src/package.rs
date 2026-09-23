@@ -191,6 +191,23 @@ fn write_root(root: &Path, absolute: &str, bytes: &[u8], mode: u32) -> Result<Pa
     Ok(file)
 }
 
+fn set_directory_mode_recursive(root: &Path, mode: u32) -> Result<()> {
+    if !root.exists() {
+        return Ok(());
+    }
+    let mut permissions = fs::metadata(root)?.permissions();
+    permissions.set_mode(mode);
+    fs::set_permissions(root, permissions)?;
+    for entry in fs::read_dir(root)? {
+        let entry = entry?;
+        let metadata = fs::symlink_metadata(entry.path())?;
+        if metadata.is_dir() {
+            set_directory_mode_recursive(&entry.path(), mode)?;
+        }
+    }
+    Ok(())
+}
+
 fn relative_symlink_target(link: &Path, target: &Path) -> Result<PathBuf> {
     let from = link
         .parent()
@@ -572,7 +589,10 @@ fn stage_main(
     symlink(link_target, &command_path)?;
 
     let yaml = serde_yaml::to_string(&packaged_config(cfg))?;
-    write_root(&payload, &cfg.paths.config, yaml.as_bytes(), 0o640)?;
+    // The packaged service runs as an unprivileged account while package
+    // payload ownership is root:root. Keep the default config world-readable
+    // so the service can start before an administrator customizes ownership.
+    write_root(&payload, &cfg.paths.config, yaml.as_bytes(), 0o644)?;
     write_root(
         &payload,
         &format!(
@@ -649,6 +669,10 @@ fn stage_main(
         &fs::read(runtime.join("LICENSE"))?,
         0o644,
     )?;
+    // Package staging inherits the caller's umask. Normalize payload
+    // directories so a restrictive build umask cannot make installed paths
+    // non-traversable by the service account.
+    set_directory_mode_recursive(&payload, 0o755)?;
     Ok(payload)
 }
 
@@ -715,6 +739,9 @@ fn build_deb(
     let arch = &cfg.runtime.architectures[&options.arch].deb;
     let debian = root.join("DEBIAN");
     fs::create_dir_all(&debian)?;
+    let mut permissions = fs::metadata(&debian)?.permissions();
+    permissions.set_mode(0o755);
+    fs::set_permissions(&debian, permissions)?;
     write_atomic(
         &debian.join("control"),
         deb_control(cfg, name, summary, version, arch, root, deps, recommends)?.as_bytes(),
@@ -1039,6 +1066,7 @@ pub fn package_native(root: &Path, mut options: PackageOptions) -> Result<Value>
         &fs::read(root.join("examples/native.yaml"))?,
         0o644,
     )?;
+    set_directory_mode_recursive(&payload, 0o755)?;
     fs::create_dir_all(&options.out)?;
     let pkg: Value = serde_json::from_slice(&fs::read(root.join("package.json"))?)?;
     let version = pkg

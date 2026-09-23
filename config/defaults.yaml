@@ -303,6 +303,7 @@ deployment:
   controlBinary: ${deployment.libexecDir}/mcpbrowserctl
   selinuxContext: ''
   units:
+    audio: null
     daemon: mcpbrowser.service
     desktop: ${nativeSystem.desktopUnit}
     worker: mcpbrowser.cua-native-worker.service

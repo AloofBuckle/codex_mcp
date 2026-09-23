@@ -1,6 +1,6 @@
-import { kHandle } from '../../util/value.mjs';
 import { ValidationError, UnsupportedError } from '../../util/errors.mjs';
 import { buildReadOnlyFunction, isSerializedFunction } from '../../util/fn.mjs';
+import { LocatorSemantics } from '../locatorSemantics.mjs';
 
 function pattern(value) {
   if (value instanceof RegExp) return { __regex: true, source: value.source, flags: value.flags };
@@ -19,9 +19,9 @@ function normalizeArg(value) {
   return value;
 }
 
-function resolverExpression(steps, actionSource = 'return nodes;') {
+function resolverExpression(steps, actionSource = 'return nodes;', asyncBody = false) {
   const serialized = JSON.stringify(normalizeArg(steps));
-  return `(() => {
+  return `${asyncBody ? '(async () =>' : '(() =>'} {
     const steps = ${serialized};
     const rx = value => value && value.__regex ? new RegExp(value.source, value.flags || '') : null;
     const textMatches = (value, wanted, exact=false) => {
@@ -54,7 +54,7 @@ function resolverExpression(steps, actionSource = 'return nodes;') {
     const resolve = inputSteps => {
       let nodes = [document];
       for (const step of inputSteps) {
-        const [op, ...args] = step;
+        const op = step.op; const args = step.args || [];
         if (op === 'locator') {
           nodes = nodes.flatMap(root => Array.from((root?.querySelectorAll ? root : document).querySelectorAll(String(args[0]))));
         } else if (op === 'frameLocator') {
@@ -110,68 +110,17 @@ function sourceOfCallback(fn) {
   throw new ValidationError('evaluate expects a function');
 }
 
-export class ExtensionLocatorBackend {
+export class ExtensionLocatorBackend extends LocatorSemantics {
   constructor(tab, steps = [], { kind = 'locator' } = {}) {
-    this.tab = tab;
-    this.steps = steps;
-    this.kind = kind;
-    this[kHandle] = { kind };
-    Object.defineProperty(this, 'tab', { enumerable: false });
+    super(tab, steps, { kind });
   }
 
-  next(op, ...args) {
-    return new ExtensionLocatorBackend(this.tab, [...this.steps, [op, ...args]], {
-      kind: this.kind,
-    });
-  }
-  locator(selector) {
-    return this.next('locator', selector);
-  }
-  frameLocator(selector) {
-    return new ExtensionLocatorBackend(this.tab, [...this.steps, ['frameLocator', selector]], {
-      kind: 'frameLocator',
-    });
-  }
-  getByRole(role, options = {}) {
-    return this.next('getByRole', role, options);
-  }
-  getByText(text, options = {}) {
-    return this.next('getByText', text, options);
-  }
-  getByLabel(text, options = {}) {
-    return this.next('getByLabel', text, options);
-  }
-  getByPlaceholder(text, options = {}) {
-    return this.next('getByPlaceholder', text, options);
-  }
-  getByTestId(value) {
-    return this.next('getByTestId', value);
-  }
-  first() {
-    return this.next('first');
-  }
-  last() {
-    return this.next('last');
-  }
-  nth(index) {
-    return this.next('nth', Number(index));
-  }
-  and(other) {
-    return this.next('and', other);
-  }
-  or(other) {
-    return this.next('or', other);
-  }
-  filter(options = {}) {
-    return this.next('filter', options);
+  spawn(steps, { kind = this.kind } = {}) {
+    return new ExtensionLocatorBackend(this.tab, steps, { kind });
   }
 
   async count() {
     return await this.tab.runtimeValue(resolverExpression(this.steps, 'return nodes.length;'));
-  }
-  async all() {
-    const count = await this.count();
-    return Array.from({ length: count }, (_, i) => this.nth(i));
   }
   async textContent() {
     return await this.#value('return nodes[0]?.textContent ?? null;');
@@ -351,7 +300,7 @@ export class ExtensionLocatorBackend {
   }
 
   async #value(actionSource, awaitPromise = false) {
-    return await this.tab.runtimeValue(resolverExpression(this.steps, actionSource), {
+    return await this.tab.runtimeValue(resolverExpression(this.steps, actionSource, awaitPromise), {
       awaitPromise,
     });
   }
