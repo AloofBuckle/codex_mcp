@@ -1,0 +1,32 @@
+[package]
+name = "codex-apply-patch"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+autobins = false
+autotests = false
+
+[lib]
+name = "codex_apply_patch"
+path = "src/lib.rs"
+doctest = false
+
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+mcpx-local-fs = { workspace = true }
+codex-utils-absolute-path = { workspace = true }
+codex-utils-path-uri = { workspace = true }
+similar = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
+tree-sitter = { workspace = true }
+tree-sitter-bash = { workspace = true }
+
+[dev-dependencies]
+assert_matches = { workspace = true }
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

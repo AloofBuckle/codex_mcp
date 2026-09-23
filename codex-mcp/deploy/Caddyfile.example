@@ -1,0 +1,7 @@
+# Example for a separate hostname. Not installed or loaded by this project.
+# config.json issuer must be https://codex-mcp.example.net
+codex-mcp.example.net {
+    reverse_proxy 127.0.0.1:35121 {
+        flush_interval -1
+    }
+}

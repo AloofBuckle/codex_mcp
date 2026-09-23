@@ -1,0 +1,8 @@
+/target/
+*.sqlite*
+/config.json
+/credentials.json
+/work/
+__pycache__/
+/SYNC_REPORT.json
+/FULL_ACCESS.json

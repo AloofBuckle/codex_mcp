@@ -1,0 +1,41 @@
+{
+  "version": "3.1.2",
+  "public_origin": "https://www.aloofbuckle.cn",
+  "single_systemd_service": true,
+  "single_public_front_door": true,
+  "front_door": {
+    "service": "mws.codexmcp.service",
+    "listen": "127.0.0.1:35111",
+    "binary": "/usr/local/libexec/codex-mcp/codex-mcp",
+    "binary_sha256": "3f557af28bdc4ffcf9561e4d0626e7f88d2200bfb0f704b8d06d86fcce764d3e"
+  },
+  "mcp_resources": {
+    "/mcp": {
+      "server_name": "codex-mcp",
+      "implementation": "Rust"
+    },
+    "/cua": {
+      "server_name": "cua_repl",
+      "implementation": "Rust OAuth/front-door proxy plus managed Node/Playwright worker"
+    }
+  },
+  "oauth": {
+    "shared_authorization_server": true,
+    "shared_client_registry": true,
+    "resource_bound_tokens": true,
+    "resources": ["https://www.aloofbuckle.cn/mcp", "https://www.aloofbuckle.cn/cua"]
+  },
+  "cua_worker": {
+    "managed_by_front_door": true,
+    "command": "/usr/bin/node /data/mws/service/mcpbrowser/scripts/serve-gui.mjs",
+    "internal_mcp": "http://127.0.0.1:38473/mcp",
+    "activity_sideband": "stdout line protocol -> codex-mcp Observer -> /monitor/v2/events",
+    "public_listener": false,
+    "same_systemd_cgroup": true
+  },
+  "command_execution": {
+    "full_access_only": true,
+    "approval_engine": false,
+    "user_command_parent": "codex-mcp service PID directly"
+  }
+}

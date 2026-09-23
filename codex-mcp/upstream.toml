@@ -1,0 +1,16 @@
+# Follow a branch or tag. The resolved commit is recorded in UPSTREAM.json after validation.
+[source]
+repository = "https://github.com/openai/codex.git"
+ref = "refs/heads/main"
+
+[build]
+follow_upstream = true
+
+[update]
+work_dir = "work/upstream"
+# This path is the server-side storage behind the user's transfer service.
+backup_dir = "/files/transfer"
+# Dedicated validation environment with mcp==2.2.0 and httpx2.
+sdk_python = "/data/mws/service/codex-mcp/work/sdk-2.2.0/bin/python"
+# Optional external test executable. It is not a service/runtime dependency.
+strace = ""

@@ -1,0 +1,22 @@
+[Unit]
+Description=Rust codex-mcp Full Access with embedded Codex libraries
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/var/lib/codex-mcp
+ExecStart=/opt/codex-mcp/bin/codex-mcp /var/lib/codex-mcp/config.json 127.0.0.1:35121
+Restart=on-failure
+RestartSec=2
+KillMode=control-group
+TimeoutStopSec=15
+UMask=0077
+Environment=RUST_LOG=info
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

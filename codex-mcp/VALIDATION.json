@@ -1,0 +1,88 @@
+{
+  "version": "2.2.0",
+  "date": "2026-09-12",
+  "target": "x86_64-unknown-linux-gnu",
+  "rust": "1.97.1",
+  "unit_tests_passed": 246,
+  "unit_tests_failed": 0,
+  "updater_tests_passed": 9,
+  "full_access": {
+    "full_access_only": true,
+    "execution_approval_engine": false,
+    "command_policy": false,
+    "execution_audit": false,
+    "sandbox_api": false,
+    "internal_rpc": false,
+    "checked_rust_files": 61,
+    "kept": [
+      "OAuth identity and token authorization",
+      "process ownership by OAuth grant",
+      "MCP type validation and side-effect metadata",
+      "OS filesystem/UID privileges",
+      "output/image/HTTP memory limits",
+      "lifecycle and error diagnostics"
+    ],
+    "blocked_packages_present": []
+  },
+  "full_access_behavior": {
+    "full_access_only": true,
+    "outside_cwd_write": true,
+    "pipe_redirection_substitution_heredoc": true,
+    "command_move_delete": true,
+    "network": true,
+    "server_approval_round_trips": 0,
+    "command_audit_records": 0,
+    "database_tables": ["oauth_clients", "oauth_codes", "oauth_tokens"],
+    "oauth_required": true
+  },
+  "integration": {
+    "passed": [
+      "OAuth discovery, origin rejection and redirect validation",
+      "PKCE, CSRF, code replay, all client authentication methods and token type isolation",
+      "MCP initialize, four-tool schema, notifications and protocol errors",
+      "Real Codex pipe execution, exit status, shell selection and relative cwd",
+      "Background sessions, exclusive replay cursor, completion and OAuth owner isolation",
+      "Uncollected final output survives the upstream executor exit-retention window",
+      "Real Codex PTY stdin and Ctrl-C",
+      "Concurrent commands and official Unicode token truncation",
+      "Continuous output yields on time and retains bounded head/tail output",
+      "Official apply_patch add/update/delete, invalid patch and large stdin payload",
+      "Official image processing, resizing, original bytes and MCP image content",
+      "Refresh rotation retains session ownership; credentials and DCR survive restart",
+      "Official MCP Python SDK Streamable HTTP initialize/list/call/image",
+      "Persistent grant revocation, access expiry and indefinite refresh grant",
+      "Administrative revocation invalidates issued authorization codes",
+      "Configured shell visibility, non-PTY EOF and shutdown of shell process groups"
+    ],
+    "count": 16
+  },
+  "architecture": {
+    "single_service_elf": true,
+    "service_processes": 1,
+    "startup_patch_image_child_processes": 0,
+    "startup_patch_image_execve_count": 1,
+    "internal_rpc_connections": 0,
+    "user_command_parent": "mcpx service PID directly",
+    "patches_tested": 8,
+    "trace_tool": "strace",
+    "trace_bytes": 12414,
+    "binary_sha256": "53d5ca8b40a61e322f3682517bb2f223a4376421d752ccd5ef39540443c20daf"
+  },
+  "upstream": {
+    "repository": "https://github.com/openai/codex.git",
+    "ref": "refs/heads/main",
+    "commit": "53c542d944c705f3a66780a19223223bee57cbb6",
+    "previous_commit": "aee8a55ab6010f1d53e741edec74dbcffa07bcfe",
+    "follow_enabled": true
+  },
+  "clippy": "passed with -D warnings",
+  "format": "passed",
+  "source_files_verified": 166,
+  "production_go": {
+    "changed": false,
+    "main_pid": 1408163,
+    "active_since": "2026-09-12 12:00:32 +08:00",
+    "sha256": "42ab928b085c0934739d1ded30c9caca47d7cb350314ec4252cbee6400fb6b72"
+  },
+  "chatgpt_web": "No new public endpoint or account connection was deployed"
+}

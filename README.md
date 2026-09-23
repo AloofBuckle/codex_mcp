@@ -8,7 +8,7 @@
 
 1.功能
 
-暴露本地资源给MCP客户端，实际上就是利用Business的网页聊天额度不消耗Codex额度跑命令；此项目就是在网页端自举的，起点是service/codex-mcp/，灵感来源thiagomendes/mcpx，但本项目没有使用MCPX的代码
+暴露本地资源给MCP客户端，实际上就是利用Business的网页聊天额度不消耗Codex额度跑命令；此项目就是在网页端自举的，Codex MCP 的官方源码导入从 [codex-mcp/scripts/upstream/vendor.py](codex-mcp/scripts/upstream/vendor.py) 开始，cua_repl 的 MCP 与持久 REPL 入口分别位于 [cua-repl/src/mcp.mjs](cua-repl/src/mcp.mjs) 和 [cua-repl/src/repl/worker.mjs](cua-repl/src/repl/worker.mjs)；灵感来源thiagomendes/mcpx，但本项目没有使用MCPX的代码
 
 2.bug
 

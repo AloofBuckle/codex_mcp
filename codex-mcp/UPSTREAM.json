@@ -1,0 +1,1228 @@
+{
+  "source_repository": "https://github.com/openai/codex.git",
+  "source_ref": "refs/heads/main",
+  "source_commit": "e8cd975a55a1e28955195f1f69a9cb81a5e4898d",
+  "resolved_at": "2026-09-21T19:44:14.218314+00:00",
+  "integration": "Single ELF, in-process Codex libraries; Full Access only",
+  "adaptations": [
+    "Remove sandbox parameters/type from the patch and local filesystem APIs",
+    "Remove unused elevated-Windows-sandbox shell fallback",
+    "Direct filesystem extraction with local-only interface",
+    "No standalone executable entrypoint, core approval engine, policy engine or audit engine",
+    "Keep codex-mcp four-tool contract; upstream dependency versions follow workspace constraints",
+    "Enable winapi std on Windows"
+  ],
+  "copied_files": [
+    {
+      "destination": "LICENSE-Codex",
+      "source": "LICENSE",
+      "sha256": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc",
+      "source_sha256": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc",
+      "modified": false
+    },
+    {
+      "destination": "NOTICE-Codex",
+      "source": "NOTICE",
+      "sha256": "9d71575ecfd9a843fc1677b0efb08053c6ba9fd686a0de1a6f5382fd3c220915",
+      "source_sha256": "9d71575ecfd9a843fc1677b0efb08053c6ba9fd686a0de1a6f5382fd3c220915",
+      "modified": false
+    },
+    {
+      "destination": "reference/apply_patch.lark",
+      "source": "codex-rs/core/assets/tools/apply_patch.lark",
+      "sha256": "d6367f4826ed608c424b0a308f3d6163527df63c22513d089b91863552f8bfeb",
+      "source_sha256": "d6367f4826ed608c424b0a308f3d6163527df63c22513d089b91863552f8bfeb",
+      "modified": false
+    },
+    {
+      "destination": "reference/apply_patch_spec.rs",
+      "source": "codex-rs/core/src/tools/handlers/apply_patch_spec.rs",
+      "sha256": "d024ebb925f64bcc34420d4db8376798c8e8bc4518e220bce47a7ebee44a345f",
+      "source_sha256": "d024ebb925f64bcc34420d4db8376798c8e8bc4518e220bce47a7ebee44a345f",
+      "modified": false
+    },
+    {
+      "destination": "reference/shell_spec.rs",
+      "source": "codex-rs/core/src/tools/handlers/shell_spec.rs",
+      "sha256": "da7cffc9d6d82bc08b537fec6bddf3cd1906a05ba4ab193ecd50325ae3744e04",
+      "source_sha256": "da7cffc9d6d82bc08b537fec6bddf3cd1906a05ba4ab193ecd50325ae3744e04",
+      "modified": false
+    },
+    {
+      "destination": "reference/view_image_spec.rs",
+      "source": "codex-rs/core/src/tools/handlers/view_image_spec.rs",
+      "sha256": "a54cb2ee992c34f6993c993c8efd16d5b91aa49bff8c5737bb4ffb64e977d413",
+      "source_sha256": "a54cb2ee992c34f6993c993c8efd16d5b91aa49bff8c5737bb4ffb64e977d413",
+      "modified": false
+    },
+    {
+      "destination": "src/shell_detect.rs",
+      "source": "codex-rs/shell-command/src/shell_detect.rs",
+      "sha256": "ac40af958738216a2d50d71ca864f3107036ed0dd842d41c7152d9a094f4b66c",
+      "source_sha256": "371d3f9147e19ddac08ac68fceea12cf2c04cf4b465340770075ce6a6e8e7c02",
+      "modified": true
+    },
+    {
+      "destination": "src/unified_exec/head_tail_buffer.rs",
+      "source": "codex-rs/core/src/unified_exec/head_tail_buffer.rs",
+      "sha256": "d57aa4118842bee24a896e85af05f01e4ef44760ea2804bc015c8efd7ae89ad5",
+      "source_sha256": "d57aa4118842bee24a896e85af05f01e4ef44760ea2804bc015c8efd7ae89ad5",
+      "modified": false
+    },
+    {
+      "destination": "src/unified_exec/head_tail_buffer_tests.rs",
+      "source": "codex-rs/core/src/unified_exec/head_tail_buffer_tests.rs",
+      "sha256": "d4537e931d4c937c247ce34852844a3d9c32ae2e955f03cc3591df4f42ce10e2",
+      "source_sha256": "d4537e931d4c937c247ce34852844a3d9c32ae2e955f03cc3591df4f42ce10e2",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/BUILD.bazel",
+      "source": "codex-rs/apply-patch/BUILD.bazel",
+      "sha256": "f974dae299db8619864bbe3c3b55a179563bf1215508067992b847590b4082e6",
+      "source_sha256": "f974dae299db8619864bbe3c3b55a179563bf1215508067992b847590b4082e6",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/Cargo.toml",
+      "source": "codex-rs/apply-patch/Cargo.toml",
+      "sha256": "d769242b8a2dc939a1c41a1900ca6a883b3194529e32eb1e65aa6aae9709f7ea",
+      "source_sha256": "388b18e13d8e3f8aa419e30385e33fe58748b2bd972df32eb66aa1484ab3d54a",
+      "modified": true
+    },
+    {
+      "destination": "vendor/codex-apply-patch/src/file_update.rs",
+      "source": "codex-rs/apply-patch/src/file_update.rs",
+      "sha256": "3f252dc0c6bc6e46130abf330191afe70a80381d17b8edc3a121129e2233808f",
+      "source_sha256": "f954105ba036f1c3748fc2ed605ce9a677d619e56ce25f89bffdcad3377734f9",
+      "modified": true
+    },
+    {
+      "destination": "vendor/codex-apply-patch/src/file_update_tests.rs",
+      "source": "codex-rs/apply-patch/src/file_update_tests.rs",
+      "sha256": "1c99db3027d1307cf8110c94ff9cf6bdf17eb02071ce66d457df1c7123bfaec4",
+      "source_sha256": "59fc1e6db897fd61be7ee865a741dc7fdb709501426c4f9603ef8a532fe08282",
+      "modified": true
+    },
+    {
+      "destination": "vendor/codex-apply-patch/src/invocation.rs",
+      "source": "codex-rs/apply-patch/src/invocation.rs",
+      "sha256": "8a856ba8c39031dfeadeb559cac6431a5d0e821b2b1c2f776ddaa8ef50cb46f6",
+      "source_sha256": "ab6ce54396919236a2b68a5dc33f670663c67c12fa8def3b80588933d297047a",
+      "modified": true
+    },
+    {
+      "destination": "vendor/codex-apply-patch/src/lib.rs",
+      "source": "codex-rs/apply-patch/src/lib.rs",
+      "sha256": "90be8736a7891091bb42abd0b44616088ab58b4e29fae73fec366f109fdfc652",
+      "source_sha256": "5e6f736f3a4b66c1d651baa9b85ce6e6921de170faf901e6c2f78ad9a383eaf9",
+      "modified": true
+    },
+    {
+      "destination": "vendor/codex-apply-patch/src/parser.rs",
+      "source": "codex-rs/apply-patch/src/parser.rs",
+      "sha256": "6b8086467d0500f4fc9aa9a35cd33a0bce53c01bcb74b915b9efc6fcf187f7ce",
+      "source_sha256": "6b8086467d0500f4fc9aa9a35cd33a0bce53c01bcb74b915b9efc6fcf187f7ce",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/src/seek_sequence.rs",
+      "source": "codex-rs/apply-patch/src/seek_sequence.rs",
+      "sha256": "5eced89191977d6b53b1b770ccaad6cafa2fb3ecbcd4839a88318f75e4a620e4",
+      "source_sha256": "5eced89191977d6b53b1b770ccaad6cafa2fb3ecbcd4839a88318f75e4a620e4",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/src/streaming_parser.rs",
+      "source": "codex-rs/apply-patch/src/streaming_parser.rs",
+      "sha256": "5f4b8e60fd24ada7c1b6a696155de3da2b946f7b5436da90e377c9de04b1e578",
+      "source_sha256": "5f4b8e60fd24ada7c1b6a696155de3da2b946f7b5436da90e377c9de04b1e578",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/src/text_file.rs",
+      "source": "codex-rs/apply-patch/src/text_file.rs",
+      "sha256": "35cbbdeb91e86780d99fccd097a5dba2772f048730556b73d685e94658ddc6e3",
+      "source_sha256": "35cbbdeb91e86780d99fccd097a5dba2772f048730556b73d685e94658ddc6e3",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/all.rs",
+      "source": "codex-rs/apply-patch/tests/all.rs",
+      "sha256": "76a945d282d61edbe1dbcd9788e7bc7c2073ebecf42c934cfb4bb2f6c47fb8cd",
+      "source_sha256": "76a945d282d61edbe1dbcd9788e7bc7c2073ebecf42c934cfb4bb2f6c47fb8cd",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/.gitattributes",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/.gitattributes",
+      "sha256": "ef13f8bdcd38dc117a6b547edffe61c437da4e821443528705e85e9fc900f15b",
+      "source_sha256": "ef13f8bdcd38dc117a6b547edffe61c437da4e821443528705e85e9fc900f15b",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/001_add_file/expected/bar.md",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/001_add_file/expected/bar.md",
+      "sha256": "dd96989d943734993ecd4dfc86a3b6809640f9690690ae5579044525316d03ef",
+      "source_sha256": "dd96989d943734993ecd4dfc86a3b6809640f9690690ae5579044525316d03ef",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/001_add_file/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/001_add_file/patch.txt",
+      "sha256": "aa18ebd5e858578e491321489cd17515e03da90c169eda64bbcdce7599c5261b",
+      "source_sha256": "aa18ebd5e858578e491321489cd17515e03da90c169eda64bbcdce7599c5261b",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/002_multiple_operations/expected/modify.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/002_multiple_operations/expected/modify.txt",
+      "sha256": "7c3bb4651da2a3024085602195a360e4e084aee735e236bb455f3b2687edf876",
+      "source_sha256": "7c3bb4651da2a3024085602195a360e4e084aee735e236bb455f3b2687edf876",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/002_multiple_operations/expected/nested/new.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/002_multiple_operations/expected/nested/new.txt",
+      "sha256": "59134a4054b27a3fc30e1ac81d9b9168dc0561f65982151324a021fe8ce88d06",
+      "source_sha256": "59134a4054b27a3fc30e1ac81d9b9168dc0561f65982151324a021fe8ce88d06",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/002_multiple_operations/input/delete.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/002_multiple_operations/input/delete.txt",
+      "sha256": "abdcccf4a6a5fae3da2c8232d6fbf33b61d5db886742c35218e724b8e5c6b0e0",
+      "source_sha256": "abdcccf4a6a5fae3da2c8232d6fbf33b61d5db886742c35218e724b8e5c6b0e0",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/002_multiple_operations/input/modify.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/002_multiple_operations/input/modify.txt",
+      "sha256": "2751a3a2f303ad21752038085e2b8c5f98ecff61a2e4ebbd43506a941725be80",
+      "source_sha256": "2751a3a2f303ad21752038085e2b8c5f98ecff61a2e4ebbd43506a941725be80",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/002_multiple_operations/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/002_multiple_operations/patch.txt",
+      "sha256": "d3477a702074b84a8aa62fed091b40c5f8f5b4a86bb6f49894d3f9bdd12f1084",
+      "source_sha256": "d3477a702074b84a8aa62fed091b40c5f8f5b4a86bb6f49894d3f9bdd12f1084",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/003_multiple_chunks/expected/multi.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/003_multiple_chunks/expected/multi.txt",
+      "sha256": "e32d16d64119533b3fd1521cb84c1850b15ed961381fc0dfe1d7cd9f3475e5b8",
+      "source_sha256": "e32d16d64119533b3fd1521cb84c1850b15ed961381fc0dfe1d7cd9f3475e5b8",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/003_multiple_chunks/input/multi.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/003_multiple_chunks/input/multi.txt",
+      "sha256": "9a1fd5560147da610cde03a9e0cf1db3d4f93b53f46ac67e754cb42fb7fb911a",
+      "source_sha256": "9a1fd5560147da610cde03a9e0cf1db3d4f93b53f46ac67e754cb42fb7fb911a",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/003_multiple_chunks/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/003_multiple_chunks/patch.txt",
+      "sha256": "b8fb2de70747f6316cec64bb3e13d5799c4ec5c4db760ff9016a28ec1acd5e97",
+      "source_sha256": "b8fb2de70747f6316cec64bb3e13d5799c4ec5c4db760ff9016a28ec1acd5e97",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/004_move_to_new_directory/expected/old/other.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/004_move_to_new_directory/expected/old/other.txt",
+      "sha256": "6b48d86f459d6cab2a77f0cfccce4232d80d4047f3b5f11139a6b37fb9873a6e",
+      "source_sha256": "6b48d86f459d6cab2a77f0cfccce4232d80d4047f3b5f11139a6b37fb9873a6e",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/004_move_to_new_directory/expected/renamed/dir/name.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/004_move_to_new_directory/expected/renamed/dir/name.txt",
+      "sha256": "1c3ef9a7c817b4642bcb3cb1456fbce92a6f992df2e1d6ad9d8a2dfb4fdf42f6",
+      "source_sha256": "1c3ef9a7c817b4642bcb3cb1456fbce92a6f992df2e1d6ad9d8a2dfb4fdf42f6",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/004_move_to_new_directory/input/old/name.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/004_move_to_new_directory/input/old/name.txt",
+      "sha256": "40eda80edfc38b36bdcdc408aa6ff2cc40b708e46ece9dfd2b2801a05a18a5fc",
+      "source_sha256": "40eda80edfc38b36bdcdc408aa6ff2cc40b708e46ece9dfd2b2801a05a18a5fc",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/004_move_to_new_directory/input/old/other.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/004_move_to_new_directory/input/old/other.txt",
+      "sha256": "6b48d86f459d6cab2a77f0cfccce4232d80d4047f3b5f11139a6b37fb9873a6e",
+      "source_sha256": "6b48d86f459d6cab2a77f0cfccce4232d80d4047f3b5f11139a6b37fb9873a6e",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/004_move_to_new_directory/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/004_move_to_new_directory/patch.txt",
+      "sha256": "3a3982b7bed7fe95be34c697a5b1b9d99bab69bf0387b8b5adfb10953494d730",
+      "source_sha256": "3a3982b7bed7fe95be34c697a5b1b9d99bab69bf0387b8b5adfb10953494d730",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/005_rejects_empty_patch/expected/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/005_rejects_empty_patch/expected/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/005_rejects_empty_patch/input/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/005_rejects_empty_patch/input/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/005_rejects_empty_patch/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/005_rejects_empty_patch/patch.txt",
+      "sha256": "20f1032ab87728c78fe8c6428c853427441ba4297dd0efac72ab470ae76e9610",
+      "source_sha256": "20f1032ab87728c78fe8c6428c853427441ba4297dd0efac72ab470ae76e9610",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/006_rejects_missing_context/expected/modify.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/006_rejects_missing_context/expected/modify.txt",
+      "sha256": "2751a3a2f303ad21752038085e2b8c5f98ecff61a2e4ebbd43506a941725be80",
+      "source_sha256": "2751a3a2f303ad21752038085e2b8c5f98ecff61a2e4ebbd43506a941725be80",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/006_rejects_missing_context/input/modify.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/006_rejects_missing_context/input/modify.txt",
+      "sha256": "2751a3a2f303ad21752038085e2b8c5f98ecff61a2e4ebbd43506a941725be80",
+      "source_sha256": "2751a3a2f303ad21752038085e2b8c5f98ecff61a2e4ebbd43506a941725be80",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/006_rejects_missing_context/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/006_rejects_missing_context/patch.txt",
+      "sha256": "1f00db0e051d695801cc8607e1905d4c78b6e871bd91fad704585eaec14f2d5e",
+      "source_sha256": "1f00db0e051d695801cc8607e1905d4c78b6e871bd91fad704585eaec14f2d5e",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/007_rejects_missing_file_delete/expected/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/007_rejects_missing_file_delete/expected/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/007_rejects_missing_file_delete/input/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/007_rejects_missing_file_delete/input/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/007_rejects_missing_file_delete/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/007_rejects_missing_file_delete/patch.txt",
+      "sha256": "fe9d2c5f1f4ffff1c077bb857609abafc08b83cac3f1633843daaa6704ceb8df",
+      "source_sha256": "fe9d2c5f1f4ffff1c077bb857609abafc08b83cac3f1633843daaa6704ceb8df",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/008_rejects_empty_update_hunk/expected/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/008_rejects_empty_update_hunk/expected/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/008_rejects_empty_update_hunk/input/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/008_rejects_empty_update_hunk/input/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/008_rejects_empty_update_hunk/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/008_rejects_empty_update_hunk/patch.txt",
+      "sha256": "d47d0fd818c62fcf0b9d751e7e5db78353885b6a86e6b5622a1dbe1cba23c60a",
+      "source_sha256": "d47d0fd818c62fcf0b9d751e7e5db78353885b6a86e6b5622a1dbe1cba23c60a",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/009_requires_existing_file_for_update/expected/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/009_requires_existing_file_for_update/expected/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/009_requires_existing_file_for_update/input/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/009_requires_existing_file_for_update/input/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/009_requires_existing_file_for_update/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/009_requires_existing_file_for_update/patch.txt",
+      "sha256": "454e38dc74d6b1943f464155c4e3c5705896941fa0f2c3116e8ccd23601387bb",
+      "source_sha256": "454e38dc74d6b1943f464155c4e3c5705896941fa0f2c3116e8ccd23601387bb",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/expected/old/other.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/expected/old/other.txt",
+      "sha256": "6b48d86f459d6cab2a77f0cfccce4232d80d4047f3b5f11139a6b37fb9873a6e",
+      "source_sha256": "6b48d86f459d6cab2a77f0cfccce4232d80d4047f3b5f11139a6b37fb9873a6e",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/expected/renamed/dir/name.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/expected/renamed/dir/name.txt",
+      "sha256": "7aa7a5359173d05b63cfd682e3c38487f3cb4f7f1d60659fe59fab1505977d4c",
+      "source_sha256": "7aa7a5359173d05b63cfd682e3c38487f3cb4f7f1d60659fe59fab1505977d4c",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/input/old/name.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/input/old/name.txt",
+      "sha256": "c85090422a84ecc24a6a47260e9fd590257f6e0e02dd774ccdcfb6a9d5e798b4",
+      "source_sha256": "c85090422a84ecc24a6a47260e9fd590257f6e0e02dd774ccdcfb6a9d5e798b4",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/input/old/other.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/input/old/other.txt",
+      "sha256": "6b48d86f459d6cab2a77f0cfccce4232d80d4047f3b5f11139a6b37fb9873a6e",
+      "source_sha256": "6b48d86f459d6cab2a77f0cfccce4232d80d4047f3b5f11139a6b37fb9873a6e",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/input/renamed/dir/name.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/input/renamed/dir/name.txt",
+      "sha256": "d32cf044872a37e6439d9055f90a0da11f1e0b07fa4e79d6ec710764ce1e206a",
+      "source_sha256": "d32cf044872a37e6439d9055f90a0da11f1e0b07fa4e79d6ec710764ce1e206a",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/010_move_overwrites_existing_destination/patch.txt",
+      "sha256": "9328b30823e578f20d2db55d35a15a1522eade17b5970ef5c76498f3aee00a96",
+      "source_sha256": "9328b30823e578f20d2db55d35a15a1522eade17b5970ef5c76498f3aee00a96",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/011_add_overwrites_existing_file/expected/duplicate.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/011_add_overwrites_existing_file/expected/duplicate.txt",
+      "sha256": "1c3ef9a7c817b4642bcb3cb1456fbce92a6f992df2e1d6ad9d8a2dfb4fdf42f6",
+      "source_sha256": "1c3ef9a7c817b4642bcb3cb1456fbce92a6f992df2e1d6ad9d8a2dfb4fdf42f6",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/011_add_overwrites_existing_file/input/duplicate.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/011_add_overwrites_existing_file/input/duplicate.txt",
+      "sha256": "40eda80edfc38b36bdcdc408aa6ff2cc40b708e46ece9dfd2b2801a05a18a5fc",
+      "source_sha256": "40eda80edfc38b36bdcdc408aa6ff2cc40b708e46ece9dfd2b2801a05a18a5fc",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/011_add_overwrites_existing_file/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/011_add_overwrites_existing_file/patch.txt",
+      "sha256": "6d6e6470a4368781be27f651176d9d7aefddadba6fbe62faa793e662cd7ac310",
+      "source_sha256": "6d6e6470a4368781be27f651176d9d7aefddadba6fbe62faa793e662cd7ac310",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/012_delete_directory_fails/expected/dir/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/012_delete_directory_fails/expected/dir/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/012_delete_directory_fails/input/dir/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/012_delete_directory_fails/input/dir/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/012_delete_directory_fails/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/012_delete_directory_fails/patch.txt",
+      "sha256": "d09813e03aaa691a3a0b225edba50674b536701425e3cb5a44d4d22c8a4a9c28",
+      "source_sha256": "d09813e03aaa691a3a0b225edba50674b536701425e3cb5a44d4d22c8a4a9c28",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/013_rejects_invalid_hunk_header/expected/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/013_rejects_invalid_hunk_header/expected/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/013_rejects_invalid_hunk_header/input/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/013_rejects_invalid_hunk_header/input/foo.txt",
+      "sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "source_sha256": "2b92ea252be0fbc26f70317cdaa7b6411ea634b50d55338cd8c495e4dbf25d1d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/013_rejects_invalid_hunk_header/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/013_rejects_invalid_hunk_header/patch.txt",
+      "sha256": "c25c2ecd7e20f5e6dd846ee8f6596de766b443e9d9bdc8f0e0c391660826cc92",
+      "source_sha256": "c25c2ecd7e20f5e6dd846ee8f6596de766b443e9d9bdc8f0e0c391660826cc92",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/014_update_file_appends_trailing_newline/expected/no_newline.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/014_update_file_appends_trailing_newline/expected/no_newline.txt",
+      "sha256": "c2097f55f01fc297fc7f4acf21438123e06e4d409a818524428534e850642f4f",
+      "source_sha256": "c2097f55f01fc297fc7f4acf21438123e06e4d409a818524428534e850642f4f",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/014_update_file_appends_trailing_newline/input/no_newline.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/014_update_file_appends_trailing_newline/input/no_newline.txt",
+      "sha256": "4575dfcd1eb57fd3cf77e78f18f5bb0659ca38ace8564d5f53e42527c603629a",
+      "source_sha256": "4575dfcd1eb57fd3cf77e78f18f5bb0659ca38ace8564d5f53e42527c603629a",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/014_update_file_appends_trailing_newline/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/014_update_file_appends_trailing_newline/patch.txt",
+      "sha256": "832ebaa947ae0cd9b328be202adcd59da66c5fcf2f0a3ba624dc466e30287cac",
+      "source_sha256": "832ebaa947ae0cd9b328be202adcd59da66c5fcf2f0a3ba624dc466e30287cac",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/015_failure_after_partial_success_leaves_changes/expected/created.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/015_failure_after_partial_success_leaves_changes/expected/created.txt",
+      "sha256": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+      "source_sha256": "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/015_failure_after_partial_success_leaves_changes/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/015_failure_after_partial_success_leaves_changes/patch.txt",
+      "sha256": "65ca3527c31b486bd893f0a323507a65ce698507e6c33db31c6d9ffd401f6ad0",
+      "source_sha256": "65ca3527c31b486bd893f0a323507a65ce698507e6c33db31c6d9ffd401f6ad0",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/016_pure_addition_update_chunk/expected/input.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/016_pure_addition_update_chunk/expected/input.txt",
+      "sha256": "013834138420c9775178b8fcbcd6b03488b704fed7d44bf37dc385d53e443913",
+      "source_sha256": "013834138420c9775178b8fcbcd6b03488b704fed7d44bf37dc385d53e443913",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/016_pure_addition_update_chunk/input/input.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/016_pure_addition_update_chunk/input/input.txt",
+      "sha256": "2751a3a2f303ad21752038085e2b8c5f98ecff61a2e4ebbd43506a941725be80",
+      "source_sha256": "2751a3a2f303ad21752038085e2b8c5f98ecff61a2e4ebbd43506a941725be80",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/016_pure_addition_update_chunk/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/016_pure_addition_update_chunk/patch.txt",
+      "sha256": "888228c23cf6db16ad3194af46d2b6b7567dac7691053c0b67be1f5df179acd9",
+      "source_sha256": "888228c23cf6db16ad3194af46d2b6b7567dac7691053c0b67be1f5df179acd9",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/017_whitespace_padded_hunk_header/expected/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/017_whitespace_padded_hunk_header/expected/foo.txt",
+      "sha256": "7aa7a5359173d05b63cfd682e3c38487f3cb4f7f1d60659fe59fab1505977d4c",
+      "source_sha256": "7aa7a5359173d05b63cfd682e3c38487f3cb4f7f1d60659fe59fab1505977d4c",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/017_whitespace_padded_hunk_header/input/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/017_whitespace_padded_hunk_header/input/foo.txt",
+      "sha256": "01d09d19c2139a46aebfb577780d123d7396e97201bc7ead210a2ebff8239dee",
+      "source_sha256": "01d09d19c2139a46aebfb577780d123d7396e97201bc7ead210a2ebff8239dee",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/017_whitespace_padded_hunk_header/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/017_whitespace_padded_hunk_header/patch.txt",
+      "sha256": "49a76c72c335007415680f75399e2f74c5bccd6b4c4b34a7d4c3174bffbfee48",
+      "source_sha256": "49a76c72c335007415680f75399e2f74c5bccd6b4c4b34a7d4c3174bffbfee48",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/018_whitespace_padded_patch_markers/expected/file.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/018_whitespace_padded_patch_markers/expected/file.txt",
+      "sha256": "27dd8ed44a83ff94d557f9fd0412ed5a8cbca69ea04922d88c01184a07300a5a",
+      "source_sha256": "27dd8ed44a83ff94d557f9fd0412ed5a8cbca69ea04922d88c01184a07300a5a",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/018_whitespace_padded_patch_markers/input/file.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/018_whitespace_padded_patch_markers/input/file.txt",
+      "sha256": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806",
+      "source_sha256": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/018_whitespace_padded_patch_markers/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/018_whitespace_padded_patch_markers/patch.txt",
+      "sha256": "2307c079befb8bccd3dd81d9f31b6fc2352a91c37a96a5117f5a5375312f78c4",
+      "source_sha256": "2307c079befb8bccd3dd81d9f31b6fc2352a91c37a96a5117f5a5375312f78c4",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/019_unicode_simple/expected/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/019_unicode_simple/expected/foo.txt",
+      "sha256": "e9014b085eebfaaf1ff77d8e6017f9ca544e21667e2a8516563eaab2fdb1262f",
+      "source_sha256": "e9014b085eebfaaf1ff77d8e6017f9ca544e21667e2a8516563eaab2fdb1262f",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/019_unicode_simple/input/foo.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/019_unicode_simple/input/foo.txt",
+      "sha256": "6bc89526aeb4d8014b8e8afac4e7f1814bbab23e45ae6f8e37ef626da9f285ec",
+      "source_sha256": "6bc89526aeb4d8014b8e8afac4e7f1814bbab23e45ae6f8e37ef626da9f285ec",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/019_unicode_simple/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/019_unicode_simple/patch.txt",
+      "sha256": "950630eb84c42a5c347636fcc49678e34667dd7976e19d70a7c0ed03d61fa8b4",
+      "source_sha256": "950630eb84c42a5c347636fcc49678e34667dd7976e19d70a7c0ed03d61fa8b4",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/020_delete_file_success/expected/keep.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/020_delete_file_success/expected/keep.txt",
+      "sha256": "f660a7996deacfbc7560e4240054a8ad82eb02fe25a95064257e07084bcacb85",
+      "source_sha256": "f660a7996deacfbc7560e4240054a8ad82eb02fe25a95064257e07084bcacb85",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/020_delete_file_success/input/keep.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/020_delete_file_success/input/keep.txt",
+      "sha256": "f660a7996deacfbc7560e4240054a8ad82eb02fe25a95064257e07084bcacb85",
+      "source_sha256": "f660a7996deacfbc7560e4240054a8ad82eb02fe25a95064257e07084bcacb85",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/020_delete_file_success/input/obsolete.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/020_delete_file_success/input/obsolete.txt",
+      "sha256": "abdcccf4a6a5fae3da2c8232d6fbf33b61d5db886742c35218e724b8e5c6b0e0",
+      "source_sha256": "abdcccf4a6a5fae3da2c8232d6fbf33b61d5db886742c35218e724b8e5c6b0e0",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/020_delete_file_success/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/020_delete_file_success/patch.txt",
+      "sha256": "b80ae683dfd6e0cebe67997c81561a3d9ef9f55ef74673e327928677e7628b4f",
+      "source_sha256": "b80ae683dfd6e0cebe67997c81561a3d9ef9f55ef74673e327928677e7628b4f",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/020_whitespace_padded_patch_marker_lines/expected/file.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/020_whitespace_padded_patch_marker_lines/expected/file.txt",
+      "sha256": "27dd8ed44a83ff94d557f9fd0412ed5a8cbca69ea04922d88c01184a07300a5a",
+      "source_sha256": "27dd8ed44a83ff94d557f9fd0412ed5a8cbca69ea04922d88c01184a07300a5a",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/020_whitespace_padded_patch_marker_lines/input/file.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/020_whitespace_padded_patch_marker_lines/input/file.txt",
+      "sha256": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806",
+      "source_sha256": "2c8b08da5ce60398e1f19af0e5dccc744df274b826abe585eaba68c525434806",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/020_whitespace_padded_patch_marker_lines/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/020_whitespace_padded_patch_marker_lines/patch.txt",
+      "sha256": "9ef1cc2e027d30b90db84ee02ff23bcb16382d490e554125d5fee89b272c2a31",
+      "source_sha256": "9ef1cc2e027d30b90db84ee02ff23bcb16382d490e554125d5fee89b272c2a31",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/021_update_file_deletion_only/expected/lines.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/021_update_file_deletion_only/expected/lines.txt",
+      "sha256": "28387b210ad33ee091c9bc2b099fe33db9be20ef6c8de8427cec615cd87f775c",
+      "source_sha256": "28387b210ad33ee091c9bc2b099fe33db9be20ef6c8de8427cec615cd87f775c",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/021_update_file_deletion_only/input/lines.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/021_update_file_deletion_only/input/lines.txt",
+      "sha256": "66663af9c7aa341431a8ee2ff27b72abd06c9218f517bb6fef948e4803c19e03",
+      "source_sha256": "66663af9c7aa341431a8ee2ff27b72abd06c9218f517bb6fef948e4803c19e03",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/021_update_file_deletion_only/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/021_update_file_deletion_only/patch.txt",
+      "sha256": "19bec424380bc552ab1149500047502e9e6dd06952c6615553600df01e50d4b3",
+      "source_sha256": "19bec424380bc552ab1149500047502e9e6dd06952c6615553600df01e50d4b3",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/022_update_file_end_of_file_marker/expected/tail.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/022_update_file_end_of_file_marker/expected/tail.txt",
+      "sha256": "b8074f984c9d414b623d1ea91f01912de5972a208a962cd66bf7ae0b467f6cd5",
+      "source_sha256": "b8074f984c9d414b623d1ea91f01912de5972a208a962cd66bf7ae0b467f6cd5",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/022_update_file_end_of_file_marker/input/tail.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/022_update_file_end_of_file_marker/input/tail.txt",
+      "sha256": "dbea9325179efe46ea2add94f7b6b745ca983fabb208dc6d34aa064623d7ee23",
+      "source_sha256": "dbea9325179efe46ea2add94f7b6b745ca983fabb208dc6d34aa064623d7ee23",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/022_update_file_end_of_file_marker/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/022_update_file_end_of_file_marker/patch.txt",
+      "sha256": "350b3b8a57211b8bf0d2a09a573b4bb69e3765979c94cb4fca00307ed7192f3c",
+      "source_sha256": "350b3b8a57211b8bf0d2a09a573b4bb69e3765979c94cb4fca00307ed7192f3c",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/023_preserves_crlf_line_endings/expected/lines.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/023_preserves_crlf_line_endings/expected/lines.txt",
+      "sha256": "0847510cfb20fcb37de9401eba3e8c713ff1917a8007ac5861f7dd4ccaaeff10",
+      "source_sha256": "0847510cfb20fcb37de9401eba3e8c713ff1917a8007ac5861f7dd4ccaaeff10",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/023_preserves_crlf_line_endings/input/lines.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/023_preserves_crlf_line_endings/input/lines.txt",
+      "sha256": "9fc4c6bdc7e5374b75e38fa9e1097577399bb74f1ccc33b1712d53a26d02c09a",
+      "source_sha256": "9fc4c6bdc7e5374b75e38fa9e1097577399bb74f1ccc33b1712d53a26d02c09a",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/023_preserves_crlf_line_endings/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/023_preserves_crlf_line_endings/patch.txt",
+      "sha256": "d8b35b612e3c7ca94af39ceea7512e5682432b9b83d8704890cfff65fa11c441",
+      "source_sha256": "d8b35b612e3c7ca94af39ceea7512e5682432b9b83d8704890cfff65fa11c441",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/024_preserves_mixed_line_endings/expected/lines.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/024_preserves_mixed_line_endings/expected/lines.txt",
+      "sha256": "915a2863bd4f19cfbf67805353bd92575b0615cd2f6d2efe47936986620f4981",
+      "source_sha256": "915a2863bd4f19cfbf67805353bd92575b0615cd2f6d2efe47936986620f4981",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/024_preserves_mixed_line_endings/input/lines.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/024_preserves_mixed_line_endings/input/lines.txt",
+      "sha256": "92c50a656c2cff73369c78e3f770a652f8744db7074beb76a357135bcc35a811",
+      "source_sha256": "92c50a656c2cff73369c78e3f770a652f8744db7074beb76a357135bcc35a811",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/fixtures/scenarios/024_preserves_mixed_line_endings/patch.txt",
+      "source": "codex-rs/apply-patch/tests/fixtures/scenarios/024_preserves_mixed_line_endings/patch.txt",
+      "sha256": "d2c9ac73cf59eb8536aaa3dc7b28b824328033a72a6950fb03cb269c8164cf51",
+      "source_sha256": "d2c9ac73cf59eb8536aaa3dc7b28b824328033a72a6950fb03cb269c8164cf51",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/suite/cli.rs",
+      "source": "codex-rs/apply-patch/tests/suite/cli.rs",
+      "sha256": "0c847c8407f2aa3bdd0d41aade65a50f2a688598252ae6cee53a0f075015de91",
+      "source_sha256": "0c847c8407f2aa3bdd0d41aade65a50f2a688598252ae6cee53a0f075015de91",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/suite/mod.rs",
+      "source": "codex-rs/apply-patch/tests/suite/mod.rs",
+      "sha256": "e8fe0eb6c25b1e70ff16ae10201f32696ac8f942c6fbfc917a619c8d818e89f9",
+      "source_sha256": "e8fe0eb6c25b1e70ff16ae10201f32696ac8f942c6fbfc917a619c8d818e89f9",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/suite/no_follow.rs",
+      "source": "codex-rs/apply-patch/tests/suite/no_follow.rs",
+      "sha256": "5d1a208f292318128a54f8d24bf1efc49fccb23faf64d69a1f4cf629944e81af",
+      "source_sha256": "5d1a208f292318128a54f8d24bf1efc49fccb23faf64d69a1f4cf629944e81af",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/suite/scenarios.rs",
+      "source": "codex-rs/apply-patch/tests/suite/scenarios.rs",
+      "sha256": "e813c9cad4f69550b8df20e0956076a671d5bab6babe3c2779544c5cdef715bd",
+      "source_sha256": "e813c9cad4f69550b8df20e0956076a671d5bab6babe3c2779544c5cdef715bd",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-apply-patch/tests/suite/tool.rs",
+      "source": "codex-rs/apply-patch/tests/suite/tool.rs",
+      "sha256": "1c6c784d9f4d1bca2bd3275b7143d228ac0a3930eadfa2de62d6a94fc9d4160f",
+      "source_sha256": "1c6c784d9f4d1bca2bd3275b7143d228ac0a3930eadfa2de62d6a94fc9d4160f",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-absolute-path/BUILD.bazel",
+      "source": "codex-rs/utils/absolute-path/BUILD.bazel",
+      "sha256": "2d160ced57d30100e318e4e377e68c39c48ef312ac87d01a0f5398be6b75112e",
+      "source_sha256": "2d160ced57d30100e318e4e377e68c39c48ef312ac87d01a0f5398be6b75112e",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-absolute-path/Cargo.toml",
+      "source": "codex-rs/utils/absolute-path/Cargo.toml",
+      "sha256": "ad98dc1a75333700db00f6bde0685ce7a3e0f5558b0520e7a09e9bbcc6576736",
+      "source_sha256": "ad98dc1a75333700db00f6bde0685ce7a3e0f5558b0520e7a09e9bbcc6576736",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-absolute-path/src/absolutize.rs",
+      "source": "codex-rs/utils/absolute-path/src/absolutize.rs",
+      "sha256": "7a2c95d410b8503c2a26e37715bc403bd31496fcead7cdc4d95dc8e96ced77a7",
+      "source_sha256": "7a2c95d410b8503c2a26e37715bc403bd31496fcead7cdc4d95dc8e96ced77a7",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-absolute-path/src/lib.rs",
+      "source": "codex-rs/utils/absolute-path/src/lib.rs",
+      "sha256": "8eccafe8d920745b23deab4df9883dcca1d71a0174d6f281c763bfab2f3530df",
+      "source_sha256": "8eccafe8d920745b23deab4df9883dcca1d71a0174d6f281c763bfab2f3530df",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-cache/BUILD.bazel",
+      "source": "codex-rs/utils/cache/BUILD.bazel",
+      "sha256": "24ec4f05ce41d4c2d532d5cb9a03aff25dc8a911e4255e806d83729ff4010da5",
+      "source_sha256": "24ec4f05ce41d4c2d532d5cb9a03aff25dc8a911e4255e806d83729ff4010da5",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-cache/Cargo.toml",
+      "source": "codex-rs/utils/cache/Cargo.toml",
+      "sha256": "79bf902f30726d663ca11ab7dad4bcd617de94b36baaeb33016d188ec06ebe89",
+      "source_sha256": "79bf902f30726d663ca11ab7dad4bcd617de94b36baaeb33016d188ec06ebe89",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-cache/src/lib.rs",
+      "source": "codex-rs/utils/cache/src/lib.rs",
+      "sha256": "eac8606225a32cff106fad9fd3c66a32ea253a85085f3321474229aadc69cd18",
+      "source_sha256": "eac8606225a32cff106fad9fd3c66a32ea253a85085f3321474229aadc69cd18",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-image/BUILD.bazel",
+      "source": "codex-rs/utils/image/BUILD.bazel",
+      "sha256": "d0283bcca31773b4ff1949536ea2cb4dc0edba6e87e09c0ca75f09350dc41337",
+      "source_sha256": "d0283bcca31773b4ff1949536ea2cb4dc0edba6e87e09c0ca75f09350dc41337",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-image/Cargo.toml",
+      "source": "codex-rs/utils/image/Cargo.toml",
+      "sha256": "1a84e5e2fb4251a62044be94b8e36db7a2143abe87d24a96b0f442e1b562142f",
+      "source_sha256": "1a84e5e2fb4251a62044be94b8e36db7a2143abe87d24a96b0f442e1b562142f",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-image/benches/prompt_images.rs",
+      "source": "codex-rs/utils/image/benches/prompt_images.rs",
+      "sha256": "64505d1840631ec24c472733d649e0412606b4c9d910a581944a6845234ae27d",
+      "source_sha256": "64505d1840631ec24c472733d649e0412606b4c9d910a581944a6845234ae27d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-image/src/error.rs",
+      "source": "codex-rs/utils/image/src/error.rs",
+      "sha256": "9d560b5fd2d2cfad1716caf0d2f438f7123926dd9ee49dc33129a7a44a444427",
+      "source_sha256": "9d560b5fd2d2cfad1716caf0d2f438f7123926dd9ee49dc33129a7a44a444427",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-image/src/image_tests.rs",
+      "source": "codex-rs/utils/image/src/image_tests.rs",
+      "sha256": "f4246d2c327872b85a4231936fbe0135db533adf98979043ee77c480561a9aa9",
+      "source_sha256": "f4246d2c327872b85a4231936fbe0135db533adf98979043ee77c480561a9aa9",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-image/src/lib.rs",
+      "source": "codex-rs/utils/image/src/lib.rs",
+      "sha256": "e0b791b2c834ec8407e9ce59bffdf047e0b1310a29b2339ff4e037cad4bd280a",
+      "source_sha256": "e0b791b2c834ec8407e9ce59bffdf047e0b1310a29b2339ff4e037cad4bd280a",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/BUILD.bazel",
+      "source": "codex-rs/utils/path-uri/BUILD.bazel",
+      "sha256": "19066cf4ef47414c2220a0267019c8395c2e5ba4033c721b64869142c4307bc2",
+      "source_sha256": "19066cf4ef47414c2220a0267019c8395c2e5ba4033c721b64869142c4307bc2",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/Cargo.toml",
+      "source": "codex-rs/utils/path-uri/Cargo.toml",
+      "sha256": "d45031c71d6dbcf8c7770ce1feebabbc2f3224841c5eb770d9e2dc70d19d9d20",
+      "source_sha256": "d45031c71d6dbcf8c7770ce1feebabbc2f3224841c5eb770d9e2dc70d19d9d20",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/src/absolute_path_normalization.rs",
+      "source": "codex-rs/utils/path-uri/src/absolute_path_normalization.rs",
+      "sha256": "e050e7bee691b2696ef8ebbdcfa5805f695b94a903b1a9b584f8724f37dd7ea3",
+      "source_sha256": "e050e7bee691b2696ef8ebbdcfa5805f695b94a903b1a9b584f8724f37dd7ea3",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/src/api_path_string.rs",
+      "source": "codex-rs/utils/path-uri/src/api_path_string.rs",
+      "sha256": "f04f388613b648a134b46e211ffa3f2001f97abbc2675df1c358bab57a2dcdd4",
+      "source_sha256": "f04f388613b648a134b46e211ffa3f2001f97abbc2675df1c358bab57a2dcdd4",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/src/api_path_string_tests.rs",
+      "source": "codex-rs/utils/path-uri/src/api_path_string_tests.rs",
+      "sha256": "eaac5db02349eecad3891b7b1be40625da9c62624b962845417b2f9428287757",
+      "source_sha256": "eaac5db02349eecad3891b7b1be40625da9c62624b962845417b2f9428287757",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/src/config_path.rs",
+      "source": "codex-rs/utils/path-uri/src/config_path.rs",
+      "sha256": "ac76d6611b0991e616d759f934e79a57c34ddfb84cf707999c75b10a4e08b5cc",
+      "source_sha256": "ac76d6611b0991e616d759f934e79a57c34ddfb84cf707999c75b10a4e08b5cc",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/src/config_path_tests.rs",
+      "source": "codex-rs/utils/path-uri/src/config_path_tests.rs",
+      "sha256": "31be58e5c3349e9ff78659a17d4f9d4b038ce7ac4322da026b985feaeaa272b8",
+      "source_sha256": "31be58e5c3349e9ff78659a17d4f9d4b038ce7ac4322da026b985feaeaa272b8",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/src/lib.rs",
+      "source": "codex-rs/utils/path-uri/src/lib.rs",
+      "sha256": "28fe287637b648e59b7138ea8bee970baeaa88dfc810c8122705a98da930073f",
+      "source_sha256": "28fe287637b648e59b7138ea8bee970baeaa88dfc810c8122705a98da930073f",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/src/native_path_bytes.rs",
+      "source": "codex-rs/utils/path-uri/src/native_path_bytes.rs",
+      "sha256": "6295f7e680d774d38cd6d6c5ad9245e58b8e0321d6f5a248260b14cc941411d1",
+      "source_sha256": "6295f7e680d774d38cd6d6c5ad9245e58b8e0321d6f5a248260b14cc941411d1",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/src/platform.rs",
+      "source": "codex-rs/utils/path-uri/src/platform.rs",
+      "sha256": "001d49fc42996a908dd4bd777013be8854b8449988ccc4cd5f15b2f4bee57a4b",
+      "source_sha256": "001d49fc42996a908dd4bd777013be8854b8449988ccc4cd5f15b2f4bee57a4b",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/src/platform_tests.rs",
+      "source": "codex-rs/utils/path-uri/src/platform_tests.rs",
+      "sha256": "2382f00b8501b597dabba6f2fc1d1fe651459b1ca413be2ed055256257aa66df",
+      "source_sha256": "2382f00b8501b597dabba6f2fc1d1fe651459b1ca413be2ed055256257aa66df",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-path-uri/src/tests.rs",
+      "source": "codex-rs/utils/path-uri/src/tests.rs",
+      "sha256": "4753194e5721ff29f434e4d611e7d9207d1b327fef23c5b66d174a0db12ceb8d",
+      "source_sha256": "4753194e5721ff29f434e4d611e7d9207d1b327fef23c5b66d174a0db12ceb8d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/BUILD.bazel",
+      "source": "codex-rs/utils/pty/BUILD.bazel",
+      "sha256": "d8ff7e3358ff7e0e1df90274cfa69585231fff351b1efa10b9ba3d4755c9efe8",
+      "source_sha256": "d8ff7e3358ff7e0e1df90274cfa69585231fff351b1efa10b9ba3d4755c9efe8",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/Cargo.toml",
+      "source": "codex-rs/utils/pty/Cargo.toml",
+      "sha256": "be0ca67707f3a83eec2a1806dd9290a309571238f7526efe3d4c6f1932341d50",
+      "source_sha256": "14ccc99cfd63e866e909c191b9a14131842bd2a8ad14c1dbda789e7a42f4a9cb",
+      "modified": true
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/child.rs",
+      "source": "codex-rs/utils/pty/src/child.rs",
+      "sha256": "e0279bc6cffd81a8bc6e00f43bd3cb65aa009b0a64857cb9c7d39d34727f9e4e",
+      "source_sha256": "e0279bc6cffd81a8bc6e00f43bd3cb65aa009b0a64857cb9c7d39d34727f9e4e",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/child_command.rs",
+      "source": "codex-rs/utils/pty/src/child_command.rs",
+      "sha256": "30e2ca5f22f4a138806514e0762cc8ef0766e4cf3386cd2a7462082db5ea3a72",
+      "source_sha256": "30e2ca5f22f4a138806514e0762cc8ef0766e4cf3386cd2a7462082db5ea3a72",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/child_tests.rs",
+      "source": "codex-rs/utils/pty/src/child_tests.rs",
+      "sha256": "fb37d29fc6bdeac7bab29ee5a1031d0c706880336dc14e0e0ab2373d442fc6e4",
+      "source_sha256": "fb37d29fc6bdeac7bab29ee5a1031d0c706880336dc14e0e0ab2373d442fc6e4",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/lib.rs",
+      "source": "codex-rs/utils/pty/src/lib.rs",
+      "sha256": "75ffd1af93c864174b9a6d3ae1c4bb53ae015e386b948a80dbb57e2a866b477f",
+      "source_sha256": "75ffd1af93c864174b9a6d3ae1c4bb53ae015e386b948a80dbb57e2a866b477f",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/macos_child.rs",
+      "source": "codex-rs/utils/pty/src/macos_child.rs",
+      "sha256": "5727022015a00f2f52f893e94ac65b0e2db07286f97d7e3ca0078b463b399e48",
+      "source_sha256": "5727022015a00f2f52f893e94ac65b0e2db07286f97d7e3ca0078b463b399e48",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/macos_child_tests.rs",
+      "source": "codex-rs/utils/pty/src/macos_child_tests.rs",
+      "sha256": "705faa59e0849b6f523cba4525d6461553b865cdb56c27c1b5014304bce23a2d",
+      "source_sha256": "705faa59e0849b6f523cba4525d6461553b865cdb56c27c1b5014304bce23a2d",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/macos_descriptor_tests.rs",
+      "source": "codex-rs/utils/pty/src/macos_descriptor_tests.rs",
+      "sha256": "5a81715216e707655b766d15e72bb44d347b7747ad4fb58c640860ccf54a8428",
+      "source_sha256": "5a81715216e707655b766d15e72bb44d347b7747ad4fb58c640860ccf54a8428",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/pipe.rs",
+      "source": "codex-rs/utils/pty/src/pipe.rs",
+      "sha256": "1bfdc1abb6c0fa5d464cbff58d5efa5ac52fdfce3dd187479e02e1d72d691eed",
+      "source_sha256": "1bfdc1abb6c0fa5d464cbff58d5efa5ac52fdfce3dd187479e02e1d72d691eed",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/pipe_tests.rs",
+      "source": "codex-rs/utils/pty/src/pipe_tests.rs",
+      "sha256": "f9a8fc8902a869b49687d3b295abf956d7f326569b1058e3fca4d6d125cc47d4",
+      "source_sha256": "f9a8fc8902a869b49687d3b295abf956d7f326569b1058e3fca4d6d125cc47d4",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/process.rs",
+      "source": "codex-rs/utils/pty/src/process.rs",
+      "sha256": "f6dca08eec90266e43c7bebe9d1e651611d8d074614bae9df707c11c1c64d71c",
+      "source_sha256": "f6dca08eec90266e43c7bebe9d1e651611d8d074614bae9df707c11c1c64d71c",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/process_group.rs",
+      "source": "codex-rs/utils/pty/src/process_group.rs",
+      "sha256": "26668450452dd42b4a9a5a61b873e336a2cfe72be33410b9352d72f31e5bcf22",
+      "source_sha256": "26668450452dd42b4a9a5a61b873e336a2cfe72be33410b9352d72f31e5bcf22",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/process_group_tests.rs",
+      "source": "codex-rs/utils/pty/src/process_group_tests.rs",
+      "sha256": "29b23535088732694069a2b2c930fb22c883eb241be919f9cc25daa352a5cfa4",
+      "source_sha256": "29b23535088732694069a2b2c930fb22c883eb241be919f9cc25daa352a5cfa4",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/pty.rs",
+      "source": "codex-rs/utils/pty/src/pty.rs",
+      "sha256": "25d04fce155c670bef1098d26d2940883ad784528dd0c796ef468d3a9a38a5f2",
+      "source_sha256": "25d04fce155c670bef1098d26d2940883ad784528dd0c796ef468d3a9a38a5f2",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/tests.rs",
+      "source": "codex-rs/utils/pty/src/tests.rs",
+      "sha256": "0b50743bedd5d1be4615b31e723e04e2fa2b75fca8fddc03f1c052706385166e",
+      "source_sha256": "0b50743bedd5d1be4615b31e723e04e2fa2b75fca8fddc03f1c052706385166e",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/unix_io.rs",
+      "source": "codex-rs/utils/pty/src/unix_io.rs",
+      "sha256": "8c5c543f48aca6f231e99ca69d660612c0174a495e0e7fcc11619eacbcdccef8",
+      "source_sha256": "8c5c543f48aca6f231e99ca69d660612c0174a495e0e7fcc11619eacbcdccef8",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/win/conpty.rs",
+      "source": "codex-rs/utils/pty/src/win/conpty.rs",
+      "sha256": "5dac77dffdb5568c009d8b52254680f29574d8b4b9d41022aa9bfbac992763a9",
+      "source_sha256": "5dac77dffdb5568c009d8b52254680f29574d8b4b9d41022aa9bfbac992763a9",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/win/job.rs",
+      "source": "codex-rs/utils/pty/src/win/job.rs",
+      "sha256": "3c904bcd4ac33719bb843639c30be39ca6e9ceda350be311f970aaf3d748a476",
+      "source_sha256": "3c904bcd4ac33719bb843639c30be39ca6e9ceda350be311f970aaf3d748a476",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/win/mod.rs",
+      "source": "codex-rs/utils/pty/src/win/mod.rs",
+      "sha256": "4f355ebc286683984158ff5b3cc3994c55e8b4eaea39775da905d91fd1fbbb14",
+      "source_sha256": "4f355ebc286683984158ff5b3cc3994c55e8b4eaea39775da905d91fd1fbbb14",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/win/procthreadattr.rs",
+      "source": "codex-rs/utils/pty/src/win/procthreadattr.rs",
+      "sha256": "f143dff9ff9ce080e617e6bae2e1864e7f59b6f83569eae18fd7f02e997a1956",
+      "source_sha256": "f143dff9ff9ce080e617e6bae2e1864e7f59b6f83569eae18fd7f02e997a1956",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/win/psuedocon.rs",
+      "source": "codex-rs/utils/pty/src/win/psuedocon.rs",
+      "sha256": "32c19b244e451a03c0da2e57a7911c69361d033c91d256ad22e61b2711487090",
+      "source_sha256": "32c19b244e451a03c0da2e57a7911c69361d033c91d256ad22e61b2711487090",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/win/psuedocon_tests.rs",
+      "source": "codex-rs/utils/pty/src/win/psuedocon_tests.rs",
+      "sha256": "ee83cd31f90be1aff6249a1d98e4ced3ceb44e6f0f2732ae4689c98eba55486b",
+      "source_sha256": "ee83cd31f90be1aff6249a1d98e4ced3ceb44e6f0f2732ae4689c98eba55486b",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/windows_input.rs",
+      "source": "codex-rs/utils/pty/src/windows_input.rs",
+      "sha256": "bac4b55825fe7becafb532c00d98188cd253a0ce07525f6474f8c76ad3681bad",
+      "source_sha256": "bac4b55825fe7becafb532c00d98188cd253a0ce07525f6474f8c76ad3681bad",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/windows_input_tests.rs",
+      "source": "codex-rs/utils/pty/src/windows_input_tests.rs",
+      "sha256": "dca6cc92c081ca7a3bfdaaec13cc7bbf32185e3c0b343e6def76d2039a2a6921",
+      "source_sha256": "dca6cc92c081ca7a3bfdaaec13cc7bbf32185e3c0b343e6def76d2039a2a6921",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/src/windows_tests.rs",
+      "source": "codex-rs/utils/pty/src/windows_tests.rs",
+      "sha256": "0a5bd604c03f3ef7149937a61609a7d9e1ffad0aa253549c0a276cdd706be6c0",
+      "source_sha256": "0a5bd604c03f3ef7149937a61609a7d9e1ffad0aa253549c0a276cdd706be6c0",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-pty/tests/conpty_search_path.rs",
+      "source": "codex-rs/utils/pty/tests/conpty_search_path.rs",
+      "sha256": "d2313cad3570a982a3aab1bba040b2528cda8b93cf228921b74b88e374a437e7",
+      "source_sha256": "d2313cad3570a982a3aab1bba040b2528cda8b93cf228921b74b88e374a437e7",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-string/BUILD.bazel",
+      "source": "codex-rs/utils/string/BUILD.bazel",
+      "sha256": "f21c3f6823488bc19a5075209ed50324a9fb98cd75ae19c38423a22e35206e07",
+      "source_sha256": "f21c3f6823488bc19a5075209ed50324a9fb98cd75ae19c38423a22e35206e07",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-string/Cargo.toml",
+      "source": "codex-rs/utils/string/Cargo.toml",
+      "sha256": "3d4f0131321ca76f08410c8a3278d1d2373c8a43118fafa5add9bd8fbb8672ff",
+      "source_sha256": "3d4f0131321ca76f08410c8a3278d1d2373c8a43118fafa5add9bd8fbb8672ff",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-string/src/json.rs",
+      "source": "codex-rs/utils/string/src/json.rs",
+      "sha256": "c12a8177df2113e469f8550b11386a9efe4933d8b2858c6c08c6c5061b28e2b6",
+      "source_sha256": "c12a8177df2113e469f8550b11386a9efe4933d8b2858c6c08c6c5061b28e2b6",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-string/src/lib.rs",
+      "source": "codex-rs/utils/string/src/lib.rs",
+      "sha256": "ba1e8d2900e1122534b3a5c9908d8e07ee1d7947ad3ae9bbeabcec111f19f951",
+      "source_sha256": "ba1e8d2900e1122534b3a5c9908d8e07ee1d7947ad3ae9bbeabcec111f19f951",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-string/src/truncate.rs",
+      "source": "codex-rs/utils/string/src/truncate.rs",
+      "sha256": "d5755286344f10d10b4bd9f93bb3bff6f1b85270a15df378254051b147ad38ad",
+      "source_sha256": "d5755286344f10d10b4bd9f93bb3bff6f1b85270a15df378254051b147ad38ad",
+      "modified": false
+    },
+    {
+      "destination": "vendor/codex-utils-string/src/truncate/tests.rs",
+      "source": "codex-rs/utils/string/src/truncate/tests.rs",
+      "sha256": "c2b000b02eaa736362eb01f7dac0e981db4c8d081ed15710bda33bf3b437e1e0",
+      "source_sha256": "c2b000b02eaa736362eb01f7dac0e981db4c8d081ed15710bda33bf3b437e1e0",
+      "modified": false
+    },
+    {
+      "destination": "vendor/mcpx-local-fs/src/lib.rs",
+      "source": "codex-rs/file-system/src/lib.rs",
+      "sha256": "297efbdd4afa4764e3bbd3370d6dd97bd17c6f36df0318187c7bb2fe93708da3",
+      "source_sha256": "c57fa0ed1fb464f5d78b7e71652b946d2cd7bb3f5ef09fa7dad6e7f34869247d",
+      "modified": true
+    },
+    {
+      "destination": "vendor/mcpx-local-fs/src/local.rs",
+      "source": "codex-rs/exec-server/src/local_file_system.rs",
+      "sha256": "f8f8ebc2e4d797bc8e745fdaac232d4e463da61c01df766b5c6669d4682a37cb",
+      "source_sha256": "1109aa736a12a585299c57c2434ecb928f7f4a6212d34589a23bfd43c3103141",
+      "modified": true
+    },
+    {
+      "destination": "vendor/mcpx-local-fs/src/no_follow/mod.rs",
+      "source": "codex-rs/exec-server/src/no_follow/mod.rs",
+      "sha256": "794903e71dec9f63e130e48a0cb73b05339154f81b7b998dc5a1ff039cf28be2",
+      "source_sha256": "794903e71dec9f63e130e48a0cb73b05339154f81b7b998dc5a1ff039cf28be2",
+      "modified": false
+    },
+    {
+      "destination": "vendor/mcpx-local-fs/src/no_follow/unix.rs",
+      "source": "codex-rs/exec-server/src/no_follow/unix.rs",
+      "sha256": "5dc4f301ae785da27782046df33499e79118e346f705a77fa5b593ad32ee9945",
+      "source_sha256": "5dc4f301ae785da27782046df33499e79118e346f705a77fa5b593ad32ee9945",
+      "modified": false
+    },
+    {
+      "destination": "vendor/mcpx-local-fs/src/no_follow/windows.rs",
+      "source": "codex-rs/exec-server/src/no_follow/windows.rs",
+      "sha256": "eed1a0ebd5b7935fede8cd73c35c3209a95ef316274ad6e21a4cad34461a076f",
+      "source_sha256": "eed1a0ebd5b7935fede8cd73c35c3209a95ef316274ad6e21a4cad34461a076f",
+      "modified": false
+    },
+    {
+      "destination": "vendor/mcpx-local-fs/src/no_follow/windows_tests.rs",
+      "source": "codex-rs/exec-server/src/no_follow/windows_tests.rs",
+      "sha256": "8514b7c72c6324daf3a3914bcbdba5ad1b612dff68a61c940b15114ad8fcc990",
+      "source_sha256": "8514b7c72c6324daf3a3914bcbdba5ad1b612dff68a61c940b15114ad8fcc990",
+      "modified": false
+    },
+    {
+      "destination": "vendor/mcpx-local-fs/src/regular_file.rs",
+      "source": "codex-rs/exec-server/src/regular_file.rs",
+      "sha256": "2b1c569fd85f5bf726706fbe67f778941e910ff8a36857645d55670be12459c9",
+      "source_sha256": "2b1c569fd85f5bf726706fbe67f778941e910ff8a36857645d55670be12459c9",
+      "modified": false
+    },
+    {
+      "destination": "vendor/mcpx-local-fs/src/regular_file_tests.rs",
+      "source": "codex-rs/exec-server/src/regular_file_tests.rs",
+      "sha256": "ba1a8d71621699f082e4b09dea8d0ae6224bbe6d50ab6c0d76520067cee8af40",
+      "source_sha256": "ba1a8d71621699f082e4b09dea8d0ae6224bbe6d50ab6c0d76520067cee8af40",
+      "modified": false
+    }
+  ]
+}

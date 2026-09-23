@@ -1,0 +1,11 @@
+{
+  "full_access_only": true,
+  "outside_cwd_write": true,
+  "pipe_redirection_substitution_heredoc": true,
+  "command_move_delete": true,
+  "network": true,
+  "server_approval_round_trips": 0,
+  "command_audit_records": 0,
+  "database_tables": ["oauth_clients", "oauth_codes", "oauth_tokens"],
+  "oauth_required": true
+}
