@@ -4,8 +4,7 @@ use codex_utils_absolute_path::AbsolutePathBuf;
 use codex_utils_path_uri::PathUri;
 use std::sync::{Arc, LazyLock};
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::{io, io::AsyncReadExt};
-const MAX_READ_FILE_BYTES: u64 = 512 * 1024 * 1024;
+use tokio::io;
 pub static LOCAL_FS: LazyLock<Arc<dyn ExecutorFileSystem>> =
     LazyLock::new(|| Arc::new(LocalFileSystem));
 pub struct LocalFileSystem;
@@ -52,10 +51,6 @@ impl ExecutorFileSystem for LocalFileSystem {
 }
 
 impl LocalFileSystem {
-    async fn open_file_for_read(&self, path: &PathUri) -> FileSystemResult<tokio::fs::File> {
-        let path = path.to_abs_path()?;
-        regular_file::open(path.as_path()).await
-    }
     async fn canonicalize(&self, path: &PathUri) -> FileSystemResult<PathUri> {
         let path = path.to_abs_path()?;
         let canonicalized =
@@ -67,23 +62,8 @@ impl LocalFileSystem {
         path: &PathUri,
         options: ReadFileOptions,
     ) -> FileSystemResult<Vec<u8>> {
-        let file = if options.follow_symlinks {
-            self.open_file_for_read(path).await?
-        } else {
-            no_follow::open_file(path.to_abs_path()?.as_path()).await?
-        };
-        let metadata = file.metadata().await?;
-        if metadata.len() > MAX_READ_FILE_BYTES {
-            return Err(file_too_large_error());
-        }
-        let mut bytes = Vec::with_capacity(metadata.len() as usize);
-        file.take(MAX_READ_FILE_BYTES + 1)
-            .read_to_end(&mut bytes)
-            .await?;
-        if bytes.len() as u64 > MAX_READ_FILE_BYTES {
-            return Err(file_too_large_error());
-        }
-        Ok(bytes)
+        let path = path.to_abs_path()?;
+        crate::local_file_system_read::read_file(path, options).await
     }
     async fn write_file(
         &self,
@@ -155,12 +135,6 @@ impl LocalFileSystem {
             Err(err) => Err(err),
         }
     }
-}
-fn file_too_large_error() -> io::Error {
-    io::Error::new(
-        io::ErrorKind::InvalidInput,
-        format!("file is too large to read: limit is {MAX_READ_FILE_BYTES} bytes"),
-    )
 }
 fn file_metadata(metadata: std::fs::Metadata, is_symlink: bool) -> FileMetadata {
     FileMetadata {

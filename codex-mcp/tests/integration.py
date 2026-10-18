@@ -69,7 +69,9 @@ class Host:
                 "-o",
                 str(self.directory / "process.trace"),
             ] + command
-        self.p = subprocess.Popen(command, stdout=self.log, stderr=self.log, start_new_session=True)
+        self.p = subprocess.Popen(
+            command, stdout=self.log, stderr=self.log, start_new_session=True
+        )
         for _ in range(200):
             try:
                 if self.request("/mcp/health")[0] == 200:
@@ -321,9 +323,13 @@ def run(host, sdk=False):
         "exec_command",
         "write_stdin",
         "apply_patch",
+        "request_user_input",
+        "request_user_input_async",
         "view_image",
     }
     assert all(t["_meta"]["mcpx/namespace"] == "functions" for t in tools)
+    image_tool = next(tool for tool in tools if tool["name"] == "view_image")
+    assert "outputSchema" not in image_tool
     assert host.rpc(access, "unsupported")["error"]["code"] == -32601
     assert host.tool(access, "exec_command", {"command": "false"})["isError"]
     assert host.tool(
@@ -340,7 +346,27 @@ def run(host, sdk=False):
         )[0]
         == 202
     )
-    passed("MCP initialize, four-tool schema, notifications and protocol errors")
+    passed("MCP initialize, six-tool schema, notifications and protocol errors")
+    question = {"questions": [{"title": "Choose a test option", "options": ["Proceed", "Cancel"]}]}
+    created = host.tool(access, "request_user_input_async", question)
+    assert not created["isError"], created
+    created = created["structuredContent"]
+    assert created["state"] == "unseen" and created["request_id"], created
+    request_id = created["request_id"]
+    assert host.tool(
+        tokens["client_secret_post"]["access_token"],
+        "request_user_input_async",
+        {"action": "poll", "request_id": request_id, "yield_time_ms": 250},
+    )["isError"]
+    closed = host.tool(
+        access, "request_user_input_async", {"action": "close", "request_id": request_id}
+    )
+    assert not closed["isError"] and closed["structuredContent"]["state"] == "closed", closed
+    polled = host.tool(
+        access, "request_user_input_async", {"action": "poll", "request_id": request_id}
+    )
+    assert not polled["isError"] and polled["structuredContent"]["state"] == "closed", polled
+    passed("Async user input lifecycle and OAuth owner isolation")
     out = host.tool(access, "exec_command", {"cmd": "printf 'stdout'; printf 'stderr' >&2; exit 7"})
     assert not out["isError"], out
     out = out["structuredContent"]
@@ -471,6 +497,12 @@ def run(host, sdk=False):
     assert w <= 2048 and h <= 2048
     original = host.tool(access, "view_image", {"path": "image.png", "detail": "original"})
     assert base64.b64decode(original["content"][0]["data"]) == image.read_bytes()
+    for result, detail in [(high, "high"), (original, "original")]:
+        assert "structuredContent" not in result
+        delivered = result.get("structuredContent", result["content"])
+        assert delivered[0]["type"] == "image"
+        assert delivered[0]["_meta"]["codex/imageDetail"] == detail
+        assert delivered[1]["type"] == "text" and "Image loaded:" in delivered[1]["text"]
     assert host.tool(access, "view_image", {"path": "large.txt"})["isError"]
     assert host.tool(access, "view_image", {"path": "."})["isError"]
     passed("Official image processing, resizing, original bytes and MCP image content")
@@ -486,7 +518,7 @@ def run(host, sdk=False):
     assert later["output"] == "refreshed", later
     host.stop()
     host.start()
-    assert len(host.rpc(access, "tools/list")["result"]["tools"]) == 4
+    assert len(host.rpc(access, "tools/list")["result"]["tools"]) == 6
     status, _, rotated = host.refresh(clients["none"], rotated["refresh_token"])
     assert status == 200
     access = rotated["access_token"]
@@ -509,11 +541,18 @@ def run(host, sdk=False):
                     async with ClientSession(read, write) as session:
                         await session.initialize()
                         result = await session.list_tools()
-                        assert len(result.tools) == 4
+                        assert len(result.tools) == 6
                         result = await session.call_tool("exec_command", {"cmd": "printf sdk_ok"})
                         assert not result.is_error
                         result = await session.call_tool("view_image", {"path": "image.png"})
                         assert result.content[0].type == "image"
+                        assert result.structured_content is None
+                        assert result.content[1].type == "text"
+                        result = await session.call_tool(
+                            "view_image", {"path": "image.png", "detail": "original"}
+                        )
+                        assert result.structured_content is None
+                        assert base64.b64decode(result.content[0].data) == image.read_bytes()
 
         asyncio.run(check_sdk())
         passed("Official MCP Python SDK Streamable HTTP initialize/list/call/image")

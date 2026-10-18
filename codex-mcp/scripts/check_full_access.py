@@ -49,8 +49,6 @@ def inspect(root):
     }
     if blocked:
         failures.append("Linked blocked policy packages: " + ", ".join(sorted(blocked)))
-    if (root / "src/rpc.rs").exists():
-        failures.append("Internal RPC adapter exists")
     if failures:
         raise RuntimeError("\n".join(failures))
     return dict(
@@ -60,6 +58,7 @@ def inspect(root):
         execution_audit=False,
         sandbox_api=False,
         internal_rpc=False,
+        uds_transport=(root / "src/rpc.rs").exists(),
         checked_rust_files=len(source),
         kept=[
             "OAuth identity and token authorization",

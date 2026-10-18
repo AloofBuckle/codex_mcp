@@ -25,7 +25,6 @@ pub async fn patch(config: &Config, args: PatchArgs) -> Result<Value> {
     let result = codex_apply_patch::apply_patch_with_options(
         &args.input,
         codex_apply_patch::ApplyPatchOptions {
-            update_file_mode: codex_apply_patch::ApplyPatchFileUpdateMode::PreserveLineEndings,
             follow_symlinks: true,
         },
         &cwd,
@@ -90,9 +89,67 @@ pub async fn image(config: &Config, args: ImageArgs) -> Result<Value> {
     })
     .await??;
     let data = STANDARD.encode(&encoded.bytes);
+    let summary = format!(
+        "Image loaded: {}; {}x{}; {}; {} encoded bytes; detail={}",
+        path.display(),
+        encoded.width,
+        encoded.height,
+        encoded.mime,
+        encoded.bytes.len(),
+        detail
+    );
+    // Image tools return multimodal content. An empty structuredContent causes
+    // clients that prefer structured results to discard the actual image blocks.
     Ok(json!({
-        "content": [{"type":"image","data":data,"mimeType":encoded.mime}],
-        "structuredContent": {},
+        "content": [
+            {"type":"image","data":data,"mimeType":encoded.mime,
+             "_meta":{"codex/imageDetail":detail}},
+            {"type":"text","text":summary}
+        ],
         "isError": false
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    #[tokio::test]
+    async fn image_content_survives_clients_that_prefer_structured_results() -> anyhow::Result<()> {
+        let root = tempfile::tempdir()?;
+        let path = root.path().join("rgba.png");
+        image::RgbaImage::new(3, 2).save(&path)?;
+        let original = std::fs::read(&path)?;
+        let config: crate::Config = serde_json::from_value(serde_json::json!({
+            "issuer":"https://image.test", "password_hash":"unused",
+            "database":root.path().join("unused.sqlite"), "workdir":root.path()
+        }))?;
+        for detail in ["high", "original"] {
+            let result = super::image(
+                &config,
+                super::ImageArgs {
+                    path: "rgba.png".into(),
+                    detail: Some(detail.into()),
+                },
+            )
+            .await?;
+            assert!(result.get("structuredContent").is_none());
+            assert_eq!(result["isError"], false);
+            let delivered = result
+                .get("structuredContent")
+                .unwrap_or(&result["content"]);
+            let image = &delivered[0];
+            assert_eq!(image["type"], "image");
+            assert_eq!(image["mimeType"], "image/png");
+            assert_eq!(image["_meta"]["codex/imageDetail"], detail);
+            let bytes = base64::Engine::decode(
+                &base64::engine::general_purpose::STANDARD,
+                image["data"].as_str().unwrap(),
+            )?;
+            assert!(!bytes.is_empty());
+            if detail == "original" {
+                assert_eq!(bytes, original);
+            }
+            assert!(delivered[1]["text"].as_str().unwrap().contains("3x2"));
+        }
+        Ok(())
+    }
 }

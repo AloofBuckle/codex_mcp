@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<style>
+:root{color-scheme:light dark;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html,body{margin:0;background:transparent;color:var(--foreground,#e5e7eb)}
+body{padding:2px}.card{border:1px solid color-mix(in srgb,currentColor 15%,transparent);border-radius:14px;padding:14px;background:color-mix(in srgb,Canvas 94%,transparent)}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:12px}.dot{width:8px;height:8px;border-radius:50%;background:#f59e0b;box-shadow:0 0 0 3px color-mix(in srgb,#f59e0b 18%,transparent)}
+.top strong{font-size:14px}.state{margin-left:auto;font-size:12px;opacity:.65}.q{padding:10px 0;border-top:1px solid color-mix(in srgb,currentColor 10%,transparent)}.q:first-of-type{border-top:0;padding-top:0}
+.header{font-size:11px;font-weight:700;opacity:.58;text-transform:uppercase;letter-spacing:.05em}.prompt{font-size:14px;font-weight:650;margin:3px 0 9px}
+.option{display:grid;grid-template-columns:18px 1fr;gap:8px;padding:8px;border-radius:9px;cursor:pointer}.option:hover{background:color-mix(in srgb,currentColor 7%,transparent)}.option input{margin-top:2px}.label{font-size:13px;font-weight:650}.desc{font-size:12px;opacity:.62;margin-top:2px}
+textarea{width:100%;min-height:62px;resize:vertical;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:9px;padding:9px;background:color-mix(in srgb,Canvas 90%,transparent);color:inherit;font:inherit;font-size:13px;margin-top:8px}
+.actions{display:flex;justify-content:flex-end;margin-top:12px}button{border:0;border-radius:9px;padding:8px 14px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;background:#2563eb;color:white}button:disabled{opacity:.45;cursor:default}.message{padding:18px 8px;text-align:center;font-size:13px;opacity:.72}.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="card" id="card"><div class="message">正在连接提问…</div></div>
+<script>
+(() => {
+  'use strict';
+  const publicOrigin = __MWS_PUBLIC_ORIGIN__;
+  const widgetKey = __MWS_WIDGET_KEY__;
+  const card = document.getElementById('card');
+  let session = null;
+  let request = null;
+  let opened = false;
+  let waitGeneration = 0;
+
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  function findSession(value, seen) {
+    if (!value || typeof value !== 'object') return null;
+    seen ||= new Set(); if (seen.has(value)) return null; seen.add(value);
+    if (value.userInputSession?.requestId && value.userInputSession?.capability) return value.userInputSession;
+    for (const child of Object.values(value)) { const found = findSession(child, seen); if (found) return found; }
+    return null;
+  }
+
+  function inferTool(input) {
+    const first = input?.questions?.[0];
+    if (first && typeof first === 'object' && 'title' in first && !('id' in first)) return 'request_user_input_async';
+    return 'request_user_input';
+  }
+
+  async function api(path, options = {}) {
+    const headers = Object.assign({'content-type':'application/json','x-user-input-widget-key':widgetKey}, options.headers || {});
+    if (session?.capability) headers.authorization = `Bearer ${session.capability}`;
+    const response = await fetch(`${publicOrigin}/mcpmonitor/widget/user-input${path}`, {
+      ...options, headers, cache:'no-store', credentials:'omit'
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
+    return body;
+  }
+
+  async function bindFromInput() {
+    const input = window.openai?.toolInput;
+    if (!input || typeof input !== 'object') return false;
+    const action = input.action || 'create';
+    if (inferTool(input) === 'request_user_input_async' && action !== 'create') {
+      card.innerHTML = '<div class="message">异步提问状态已返回给模型。</div>';
+      return true;
+    }
+    const bound = await api('/bind', {method:'POST', body:JSON.stringify({tool:inferTool(input), arguments:input})});
+    session = bound.session;
+    request = bound.request;
+    return true;
+  }
+
+  async function ensureSession() {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const meta = window.openai?.toolResponseMetadata;
+      const found = findSession(meta);
+      if (found) { session = found; break; }
+      try { if (await bindFromInput()) break; } catch {}
+      await sleep(80);
+    }
+    if (!session) throw new Error('找不到当前提问');
+    if (!request) request = await api(`/api/${encodeURIComponent(session.requestId)}`);
+    render();
+    longWait();
+  }
+
+  async function markOpened() {
+    if (opened || !request || request.terminal) return;
+    opened = true;
+    try {
+      request = await api(`/api/${encodeURIComponent(request.id)}/opened`, {method:'POST', body:'{}'});
+      render();
+    } catch {}
+  }
+
+  function hideAnsweredWidget() {
+    waitGeneration += 1;
+    card.replaceChildren();
+    card.style.display = 'none';
+    document.body.style.padding = '0';
+    document.body.style.margin = '0';
+    document.body.style.height = '0';
+    document.body.style.minHeight = '0';
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.height = '0';
+    document.documentElement.style.minHeight = '0';
+    document.documentElement.style.overflow = 'hidden';
+    try { window.openai?.notifyIntrinsicHeight?.(0); } catch {}
+    try { window.openai?.requestClose?.(); } catch {}
+  }
+
+  function questionHtml(q, index) {
+    const options = Array.isArray(q.options) ? q.options : null;
+    if (!options) {
+      return `<section class="q" data-q="${esc(q.id)}"><div class="header">${esc(q.header || `问题 ${index+1}`)}</div><div class="prompt">${esc(q.question)}</div><textarea data-free placeholder="输入回答"></textarea></section>`;
+    }
+    const rows = options.map((o, i) => `<label class="option"><input type="radio" name="q-${esc(q.id)}" value="${esc(o.label)}" ${i===0?'checked':''}><span><div class="label">${esc(o.label)}</div>${o.description?`<div class="desc">${esc(o.description)}</div>`:''}</span></label>`).join('');
+    const other = q.isOther ? `<label class="option"><input type="radio" name="q-${esc(q.id)}" value="__other__"><span><div class="label">None of the above</div><div class="desc">输入其他回答</div></span></label>` : '';
+    return `<section class="q" data-q="${esc(q.id)}"><div class="header">${esc(q.header || `问题 ${index+1}`)}</div><div class="prompt">${esc(q.question)}</div>${rows}${other}<textarea data-note placeholder="补充说明（可选）"></textarea></section>`;
+  }
+
+  function render() {
+    if (!request) return;
+    if (request.terminal) {
+      if (request.status === 'answered') {
+        hideAnsweredWidget();
+        return;
+      }
+      const text = request.status === 'answered' ? '已提交回答' : request.status === 'auto_selected' ? '已自动选择推荐项' : request.status === 'closed' ? '提问已结束' : '提问已超时';
+      card.innerHTML = `<div class="message">${esc(text)}</div>`;
+      return;
+    }
+    card.innerHTML = `<div class="top"><span class="dot"></span><strong>Codex 需要你的输入</strong><span class="state">${request.status==='opened'?'正在回答':'等待查看'}</span></div>${request.questions.map(questionHtml).join('')}<div class="actions"><button id="submit">提交</button></div>`;
+    card.querySelector('#submit')?.addEventListener('click', submit);
+    for (const option of card.querySelectorAll('input[type="radio"]')) {
+      option.addEventListener('click', () => markOpened(), {once:true});
+    }
+    for (const text of card.querySelectorAll('textarea')) {
+      text.addEventListener('input', () => markOpened(), {once:true});
+    }
+    if (window.openai?.notifyIntrinsicHeight) window.openai.notifyIntrinsicHeight(card.scrollHeight + 8);
+  }
+
+  function collectResponse() {
+    const answers = {};
+    for (const q of request.questions || []) {
+      const section = card.querySelector(`[data-q="${CSS.escape(q.id)}"]`);
+      const options = Array.isArray(q.options) ? q.options : null;
+      if (!options) {
+        const value = section?.querySelector('[data-free]')?.value?.trim() || '';
+        if (!value) throw new Error(`请回答：${q.question}`);
+        answers[q.id] = {answers:[value]};
+        continue;
+      }
+      const selected = section?.querySelector(`input[name="q-${CSS.escape(q.id)}"]:checked`)?.value;
+      const note = section?.querySelector('[data-note]')?.value?.trim() || '';
+      if (!selected) throw new Error(`请选择：${q.question}`);
+      if (selected === '__other__') {
+        if (!note) throw new Error(`请输入：${q.question}`);
+        answers[q.id] = {answers:[note]};
+      } else {
+        answers[q.id] = {answers: note ? [selected, `user_note: ${note}`] : [selected]};
+      }
+    }
+    return {answers};
+  }
+
+  async function submit() {
+    const button = card.querySelector('#submit');
+    if (button) button.disabled = true;
+    try {
+      await markOpened();
+      request = await api(`/api/${encodeURIComponent(request.id)}/answer`, {method:'POST', body:JSON.stringify(collectResponse())});
+      render();
+    } catch (error) {
+      if (button) button.disabled = false;
+      alert(error?.message || '提交失败');
+    }
+  }
+
+  async function longWait() {
+    const generation = ++waitGeneration;
+    while (generation === waitGeneration && request && !request.terminal) {
+      try {
+        const next = await api(`/api/${encodeURIComponent(request.id)}?wait_ms=30000`);
+        if (generation !== waitGeneration) return;
+        const changed = next.status !== request.status || next.terminal !== request.terminal;
+        request = next;
+        if (changed) render();
+      } catch { await sleep(1000); }
+    }
+  }
+
+  window.addEventListener('openai:set_globals', () => {
+    if (!session) ensureSession().catch(() => {});
+  });
+  ensureSession().catch((error) => {
+    card.innerHTML = `<div class="message">${esc(error?.message || '无法打开提问')}</div>`;
+  });
+})();
+</script>
+</body>
+</html>

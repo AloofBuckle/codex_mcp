@@ -198,31 +198,60 @@ pub async fn mcp(
             } else {
                 VERSIONS[0]
             };
-            json!({"protocolVersion":version,"serverInfo":{"name":"codex-mcp","version":env!("CARGO_PKG_VERSION")},"capabilities":{"tools":{"listChanged":false}},"instructions":schema::instructions(&a.config.workdir)})
+            json!({"protocolVersion":version,"serverInfo":{"name":"codex-mcp","version":env!("CARGO_PKG_VERSION")},"capabilities":{"tools":{"listChanged":false},"resources":{"listChanged":false},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":[crate::user_input::RESOURCE_MIME]}}},"instructions":schema::instructions(&a.config.workdir)})
         }
         "ping" => json!({}),
         "tools/list" => {
             if value["params"].get("cursor").is_some() {
+                return rpc_error(id, -32602, "This static tool catalog does not use cursors");
+            }
+            schema::tools(a.config.expose_shell, a.config.login)
+        }
+        "resources/list" => {
+            if value["params"].get("cursor").is_some() {
                 return rpc_error(
                     id,
                     -32602,
-                    "This static four-tool catalog does not use cursors",
+                    "This static resource catalog does not use cursors",
                 );
             }
-            schema::tools(a.config.expose_shell, a.config.login)
+            let public_origin = a.config.user_input.public_origin(&a.config.issuer);
+            json!({"resources":[crate::user_input::resource_descriptor(public_origin)]})
+        }
+        "resources/read" => {
+            if value["params"]["uri"].as_str() != Some(crate::user_input::RESOURCE_URI) {
+                return rpc_error(id, -32602, "Unknown resource");
+            }
+            crate::user_input::resource_contents(
+                a.config.user_input.public_origin(&a.config.issuer),
+                &a.observer.user_input_widget_key().unwrap_or_default(),
+            )
         }
         "tools/call" => {
             let Some(name) = value["params"]["name"].as_str() else {
                 return rpc_error(id, -32602, "Tool name is required");
             };
-            if !["apply_patch", "exec_command", "view_image", "write_stdin"].contains(&name) {
+            if ![
+                "apply_patch",
+                "exec_command",
+                "request_user_input",
+                "request_user_input_async",
+                "view_image",
+                "write_stdin",
+            ]
+            .contains(&name)
+            {
                 return rpc_error(id, -32602, "Unknown tool");
             }
             let args = value["params"]
                 .get("arguments")
                 .cloned()
                 .unwrap_or(json!({}));
-            let observation = a.observer.begin(name, &args);
+            let observation = if matches!(name, "request_user_input" | "request_user_input_async") {
+                None
+            } else {
+                a.observer.begin(name, &args)
+            };
             let call = call_tool(a.clone(), p.family, name.to_owned(), args, observation).await;
             match call {
                 Ok(v) => v,
@@ -260,6 +289,18 @@ async fn call_tool(
                         false,
                     )
                 }
+                "request_user_input" => {
+                    let raw_args = args.clone();
+                    let args: crate::user_input::SyncArgs = serde_json::from_value(args)?;
+                    let reply = a.user_inputs.sync(&owner, &raw_args, args).await?;
+                    text_result_meta(reply.data, false, reply.meta)
+                }
+                "request_user_input_async" => {
+                    let raw_args = args.clone();
+                    let args: crate::user_input::AsyncArgs = serde_json::from_value(args)?;
+                    let reply = a.user_inputs.async_tool(&owner, &raw_args, args).await?;
+                    text_result_meta(reply.data, false, reply.meta)
+                }
                 "apply_patch" => {
                     let args: media::PatchArgs = serde_json::from_value(args)?;
                     let result = media::patch(&a.config, args).await?;
@@ -282,4 +323,12 @@ async fn call_tool(
 }
 fn text_result(data: Value, error: bool) -> Value {
     json!({"content":[{"type":"text","text":data.to_string()}],"structuredContent":data,"isError":error})
+}
+
+fn text_result_meta(data: Value, error: bool, meta: Option<Value>) -> Value {
+    let mut value = text_result(data, error);
+    if let Some(meta) = meta {
+        value["_meta"] = meta;
+    }
+    value
 }
