@@ -1,6 +1,6 @@
 use crate::App;
 use anyhow::Result;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier, password_hash::SaltString};
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use axum::{
     Json,
     extract::{Form, Query, State},
@@ -11,7 +11,7 @@ use base64::{
     Engine,
     engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
 };
-use rand::RngCore;
+use rand::Rng;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -78,7 +78,7 @@ impl Auth {
         })
     }
     pub fn principal(&self, token: &str, resource: &str) -> Result<Option<Principal>> {
-        Ok(self.db.lock().unwrap().query_row("SELECT family FROM oauth_tokens WHERE hash=? AND kind='access' AND resource=? AND (expires=0 OR expires>?)",params![hash(token),resource,now()],|r|Ok(Principal{family:r.get(0)?})).optional()?)
+        Ok(self.db.lock().unwrap().query_row("SELECT family FROM oauth_tokens WHERE hash=? AND kind='access' AND resource=? AND (expires=0 OR expires>?)",params![hash(token),resource,sql_time(now())?],|r|Ok(Principal{family:r.get(0)?})).optional()?)
     }
     pub fn revoke_all(&self) -> Result<()> {
         let mut db = self.db.lock().unwrap();
@@ -118,11 +118,14 @@ pub fn now() -> u64 {
 }
 pub fn random() -> String {
     let mut bytes = [0; 32];
-    rand::thread_rng().fill_bytes(&mut bytes);
+    rand::rng().fill_bytes(&mut bytes);
     URL_SAFE_NO_PAD.encode(bytes)
 }
 fn hash(s: &str) -> String {
-    format!("{:x}", Sha256::digest(s.as_bytes()))
+    hex::encode(Sha256::digest(s.as_bytes()))
+}
+fn sql_time(seconds: u64) -> Result<i64> {
+    Ok(i64::try_from(seconds)?)
 }
 fn same(a: &str, b: &str) -> bool {
     let a = Sha256::digest(a.as_bytes());
@@ -134,9 +137,8 @@ pub fn hash_password(password: &str) -> Result<String> {
         password.len() >= 12,
         "password must contain at least 12 characters"
     );
-    let salt = SaltString::generate(&mut argon2::password_hash::rand_core::OsRng);
     Argon2::default()
-        .hash_password(password.as_bytes(), &salt)
+        .hash_password(password.as_bytes())
         .map(|h| h.to_string())
         .map_err(|e| anyhow::anyhow!("{e}"))
 }
@@ -241,7 +243,7 @@ pub async fn register(State(a): State<Arc<App>>, Json(r): Json<Registration>) ->
         let db = a.auth.db.lock().unwrap();
         anyhow::ensure!(
             db.query_row("SELECT count(*) FROM oauth_clients", [], |r| r
-                .get::<_, u64>(0))?
+                .get::<_, i64>(0))?
                 < 4096,
             "client registry full"
         );
@@ -516,10 +518,17 @@ pub async fn authorize_post(
     let auth = p.authorization;
     let stored = (|| -> Result<()> {
         let db = a.auth.db.lock().unwrap();
-        db.execute("DELETE FROM oauth_codes WHERE expires<=?", [now()])?;
+        db.execute(
+            "DELETE FROM oauth_codes WHERE expires<=?",
+            [sql_time(now())?],
+        )?;
         db.execute(
             "INSERT INTO oauth_codes VALUES(?,?,?)",
-            params![hash(&code), serde_json::to_string(&auth)?, now() + 300],
+            params![
+                hash(&code),
+                serde_json::to_string(&auth)?,
+                sql_time(now() + 300)?
+            ],
         )?;
         Ok(())
     })();
@@ -649,7 +658,7 @@ fn exchange(a: &App, client: &str, f: &HashMap<String, String>) -> Result<Value>
     let tx = db.transaction()?;
     let (family, resource, scope) = match get("grant_type") {
         "authorization_code" => {
-            let row: Option<(String, u64)> = tx
+            let row: Option<(String, i64)> = tx
                 .query_row(
                     "SELECT authorization,expires FROM oauth_codes WHERE hash=?",
                     [hash(get("code"))],
@@ -659,7 +668,7 @@ fn exchange(a: &App, client: &str, f: &HashMap<String, String>) -> Result<Value>
             let (data, expires) = row.ok_or_else(invalid)?;
             let code: Authorization = serde_json::from_str(&data)?;
             let verifier = get("code_verifier");
-            if expires <= now()
+            if expires <= sql_time(now())?
                 || code.client_id != client
                 || code.redirect_uri != get("redirect_uri")
                 || verifier.len() < 43
@@ -681,7 +690,7 @@ fn exchange(a: &App, client: &str, f: &HashMap<String, String>) -> Result<Value>
             (random(), code.resource, code.scope)
         }
         "refresh_token" => {
-            let row:Option<(String,String,String,String)>=tx.query_row("SELECT family,client_id,resource,scope FROM oauth_tokens WHERE hash=? AND kind='refresh' AND (expires=0 OR expires>?)",params![hash(get("refresh_token")),now()],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).optional()?;
+            let row:Option<(String,String,String,String)>=tx.query_row("SELECT family,client_id,resource,scope FROM oauth_tokens WHERE hash=? AND kind='refresh' AND (expires=0 OR expires>?)",params![hash(get("refresh_token")),sql_time(now())?],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).optional()?;
             let (family, cid, resource, granted_scope) = row.ok_or_else(invalid)?;
             if cid != client {
                 return Err(invalid());
@@ -718,11 +727,18 @@ fn exchange(a: &App, client: &str, f: &HashMap<String, String>) -> Result<Value>
     let expires = if ttl == 0 { 0 } else { now() + ttl };
     tx.execute(
         "DELETE FROM oauth_tokens WHERE expires>0 AND expires<=?",
-        [now()],
+        [sql_time(now())?],
     )?;
     tx.execute(
         "INSERT INTO oauth_tokens VALUES(?,'access',?,?,?,?,?)",
-        params![hash(&access), family, client, resource, scope, expires],
+        params![
+            hash(&access),
+            family,
+            client,
+            resource,
+            scope,
+            sql_time(expires)?
+        ],
     )?;
     tx.execute(
         "INSERT INTO oauth_tokens VALUES(?,'refresh',?,?,?,?,0)",

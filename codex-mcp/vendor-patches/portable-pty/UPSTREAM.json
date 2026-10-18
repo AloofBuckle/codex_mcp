@@ -1,0 +1,7 @@
+{
+  "crate": "portable-pty",
+  "version": "0.9.0",
+  "repository": "https://github.com/wezterm/wezterm",
+  "change": "Mark extra Unix FDs CLOEXEC instead of closing the Rust exec-error channel before exec.",
+  "original_unix_rs_sha256": "14c85213b32074d71c8af334531fd027d6a0558dee830282620c88bab056c4b3"
+}

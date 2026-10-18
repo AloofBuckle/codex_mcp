@@ -1,11 +1,12 @@
 [package]
 name = "codex-mcp"
-version = "3.1.2"
+version = "3.1.3"
 edition = "2024"
 license = "Apache-2.0"
 
 [workspace]
 members = ["vendor/*"]
+exclude = ["vendor-patches/portable-pty"]
 [workspace.package]
 version = "0.0.0"
 edition = "2024"
@@ -18,71 +19,80 @@ license = "Apache-2.0"
 chunks_exact_to_as_chunks = "allow"
 
 [workspace.dependencies]
-anyhow = "1"
+anyhow = "1.0.104"
+assert_cmd = "2.2.2"
 assert_matches = "1.5.0"
-base64 = "0.22.1"
+base64 = "0.23.1"
 codex-utils-absolute-path = { path = "vendor/codex-utils-absolute-path" }
 codex-utils-cache = { path = "vendor/codex-utils-cache" }
+codex-utils-cargo-bin = { path = "vendor/codex-utils-cargo-bin" }
 codex-utils-path-uri = { path = "vendor/codex-utils-path-uri" }
-dirs = "6"
+ctor = "1.0.13"
+dirs = "7.0.0"
 divan = "0.1.21"
-dunce = "1.0.4"
-image = { version = "^0.25.9", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
-lazy_static = "1"
-libc = "0.2.182"
-log = "0.4"
-lru = "0.18.2"
+dunce = "1.0.5"
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
+lazy_static = "1.5.1"
+libc = "0.2.189"
+log = "0.4.34"
+lru = "0.18.5"
 mcpx-local-fs = { path = "vendor/mcpx-local-fs" }
 mime_guess = "2.0.5"
 portable-pty = "0.9.0"
 pretty_assertions = "1.4.1"
-regex-lite = "0.1.8"
-schemars = "0.8.22"
-serde = { version = "1", features = ["rc"] }
-serde_json = "1"
-sha1 = "0.10.6"
-similar = "2.7.0"
-tempfile = "3.23.0"
-thiserror = "2.0.17"
-tokio = { version = "1", features = ["full"] }
-tree-sitter = "0.25.10"
-tree-sitter-bash = "0.25"
-ts-rs = "11"
-url = "2"
-urlencoding = "2.1"
+regex-lite = "0.1.9"
+runfiles = { git = "https://github.com/dzbarsky/rules_rust", rev = "fd521efe16c03e4cd169453eb44fb98d73ebb7aa" }
+schemars = "1.2.2"
+serde = { version = "1.0.229", features = ["rc"] }
+serde_json = "1.0.151"
+sha1 = "0.11.0"
+similar = "3.2.0"
+tempfile = "3.27.0"
+thiserror = "2.0.21"
+tokio = { version = "1.53.1", features = ["full"] }
+tree-sitter = "0.27.0"
+tree-sitter-bash = "0.25.1"
+ts-rs = "12.0.1"
+url = "2.5.8"
+urlencoding = "2.1.3"
 
 [dependencies]
-anyhow = "1"
-axum = "0.8"
+anyhow = "1.0.104"
+axum = "0.8.9"
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-rusqlite = { version = "0.37", features = ["bundled"] }
-rand = "0.8"
-sha2 = "0.10"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+rand = "0.10.3"
+sha2 = "0.11.0"
+hex = "0.4.3"
 base64.workspace = true
-argon2 = "0.5"
-url = "2"
-libc = "0.2"
-uuid = { version = "1", features = ["v4"] }
+argon2 = "0.6.0"
+url = "2.5.8"
+libc = "0.2.189"
+uuid = { version = "1.26.1", features = ["v4"] }
 codex-utils-string = { path = "vendor/codex-utils-string" }
 codex-utils-image = { path = "vendor/codex-utils-image" }
 codex-utils-pty = { path = "vendor/codex-utils-pty" }
 codex-apply-patch = { path = "vendor/codex-apply-patch" }
 codex-utils-path-uri.workspace = true
 mcpx-local-fs.workspace = true
-which = "8"
-regex = "1"
+which = "8.0.6"
+regex = "1.13.1"
 image.workspace = true
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-async-stream = "0.3"
-reqwest = { version = "0.12", default-features = false, features = ["stream"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+async-stream = "0.3.6"
+reqwest = { version = "0.13.5", default-features = false, features = ["stream"] }
 
 [dev-dependencies]
-tempfile = "3"
-pretty_assertions = "1"
+tempfile = "3.27.0"
+pretty_assertions = "1.4.1"
 
 [profile.release]
 lto = "thin"
 strip = true
+
+# Preserve Rust exec-error reporting during the Unix PTY compatibility fallback.
+[patch.crates-io]
+portable-pty = { path = "vendor-patches/portable-pty" }

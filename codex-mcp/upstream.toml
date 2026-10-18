@@ -8,9 +8,9 @@ follow_upstream = true
 
 [update]
 work_dir = "work/upstream"
-# This path is the server-side storage behind the user's transfer service.
-backup_dir = "/files/transfer"
-# Dedicated validation environment with mcp==2.2.0 and httpx2.
-sdk_python = "/data/mws/service/codex-mcp/work/sdk-2.2.0/bin/python"
+# Keep source backups private to this checkout, not to an MWS transfer service.
+backup_dir = "work/backups"
+# Optionally point to a Python environment with mcp and httpx installed.
+sdk_python = ""
 # Optional external test executable. It is not a service/runtime dependency.
 strace = ""

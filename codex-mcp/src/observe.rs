@@ -17,8 +17,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     convert::Infallible,
+    fs,
     path::PathBuf,
     sync::{
         Arc, Mutex,
@@ -31,6 +32,9 @@ const IMAGE_BYTES: usize = 2 * 1024 * 1024;
 use tokio::sync::broadcast;
 
 const ARGUMENT_BYTES: usize = 32 * 1024;
+const DEFAULT_TERMINAL_REPLAY_ENTRIES: usize = 1024;
+const DEFAULT_TERMINAL_REPLAY_MEMORY_BYTES: u64 = 32 * 1024 * 1024;
+const DEFAULT_TERMINAL_REPLAY_DISK_BYTES: u64 = 256 * 1024 * 1024;
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -44,6 +48,14 @@ pub struct MonitorConfig {
     pub output_bytes: usize,
     #[serde(default = "default_event_buffer")]
     pub event_buffer: usize,
+    #[serde(default = "default_terminal_replay_entries")]
+    pub terminal_replay_entries: usize,
+    #[serde(default = "default_terminal_replay_memory_bytes")]
+    pub terminal_replay_memory_bytes: u64,
+    #[serde(default = "default_terminal_replay_disk_bytes")]
+    pub terminal_replay_disk_bytes: u64,
+    #[serde(default)]
+    pub terminal_replay_dir: Option<PathBuf>,
 }
 
 fn default_output() -> usize {
@@ -51,6 +63,15 @@ fn default_output() -> usize {
 }
 fn default_event_buffer() -> usize {
     1024
+}
+fn default_terminal_replay_entries() -> usize {
+    DEFAULT_TERMINAL_REPLAY_ENTRIES
+}
+fn default_terminal_replay_memory_bytes() -> u64 {
+    DEFAULT_TERMINAL_REPLAY_MEMORY_BYTES
+}
+fn default_terminal_replay_disk_bytes() -> u64 {
+    DEFAULT_TERMINAL_REPLAY_DISK_BYTES
 }
 
 impl MonitorConfig {
@@ -72,6 +93,24 @@ impl MonitorConfig {
             (64..=8192).contains(&self.event_buffer),
             "monitor event_buffer must be 64..8192"
         );
+        anyhow::ensure!(
+            (16..=16384).contains(&self.terminal_replay_entries),
+            "monitor terminal_replay_entries must be 16..16384"
+        );
+        anyhow::ensure!(
+            (1024 * 1024..=512 * 1024 * 1024).contains(&self.terminal_replay_memory_bytes),
+            "monitor terminal_replay_memory_bytes must be 1MiB..512MiB"
+        );
+        anyhow::ensure!(
+            self.terminal_replay_disk_bytes <= 4 * 1024 * 1024 * 1024,
+            "monitor terminal_replay_disk_bytes must be <=4GiB"
+        );
+        if let Some(path) = &self.terminal_replay_dir {
+            anyhow::ensure!(
+                path.is_absolute(),
+                "monitor terminal_replay_dir must be absolute"
+            );
+        }
         Ok(())
     }
 }
@@ -100,6 +139,237 @@ struct CallState {
     image: Option<String>,
 }
 
+#[derive(Clone, Debug, Serialize)]
+struct ReplayGap {
+    from_sequence: u64,
+    to_sequence: u64,
+    lost_terminal_events: u64,
+}
+
+struct MemoryReplayEntry {
+    sequence: u64,
+    bytes: u64,
+    value: Arc<Value>,
+}
+
+struct DiskReplayEntry {
+    sequence: u64,
+    bytes: u64,
+    path: PathBuf,
+    call_id: Option<String>,
+}
+
+struct ReplaySnapshot {
+    disk: Vec<(u64, PathBuf)>,
+    memory: Vec<Arc<Value>>,
+    pending_call_ids: Vec<String>,
+    gap: Option<ReplayGap>,
+}
+
+struct TerminalReplay {
+    memory: VecDeque<MemoryReplayEntry>,
+    memory_bytes: u64,
+    disk: VecDeque<DiskReplayEntry>,
+    disk_bytes: u64,
+    max_entries: usize,
+    max_memory_bytes: u64,
+    max_disk_bytes: u64,
+    dir: Option<PathBuf>,
+    gap: Option<ReplayGap>,
+}
+
+impl TerminalReplay {
+    fn new(config: Option<&MonitorConfig>, boot: &str) -> Self {
+        let max_entries = config.map_or(DEFAULT_TERMINAL_REPLAY_ENTRIES, |c| {
+            c.terminal_replay_entries
+        });
+        let max_memory_bytes = config.map_or(DEFAULT_TERMINAL_REPLAY_MEMORY_BYTES, |c| {
+            c.terminal_replay_memory_bytes
+        });
+        let max_disk_bytes = config.map_or(DEFAULT_TERMINAL_REPLAY_DISK_BYTES, |c| {
+            c.terminal_replay_disk_bytes
+        });
+        let dir = config
+            .and_then(|c| c.terminal_replay_dir.as_ref())
+            .map(|base| base.join(boot));
+        if let Some(path) = &dir {
+            if let Some(parent) = path.parent() {
+                let _ = fs::create_dir_all(parent);
+                if let Ok(entries) = fs::read_dir(parent) {
+                    for entry in entries.flatten() {
+                        if entry.path() != *path
+                            && entry.file_type().is_ok_and(|kind| kind.is_dir())
+                        {
+                            let _ = fs::remove_dir_all(entry.path());
+                        }
+                    }
+                }
+            }
+            let _ = fs::create_dir_all(path);
+        }
+        Self {
+            memory: VecDeque::new(),
+            memory_bytes: 0,
+            disk: VecDeque::new(),
+            disk_bytes: 0,
+            max_entries,
+            max_memory_bytes,
+            max_disk_bytes,
+            dir,
+            gap: None,
+        }
+    }
+
+    fn record_gap(&mut self, sequence: u64) {
+        match &mut self.gap {
+            Some(gap) => {
+                gap.from_sequence = gap.from_sequence.min(sequence);
+                gap.to_sequence = gap.to_sequence.max(sequence);
+                gap.lost_terminal_events = gap.lost_terminal_events.saturating_add(1);
+            }
+            None => {
+                self.gap = Some(ReplayGap {
+                    from_sequence: sequence,
+                    to_sequence: sequence,
+                    lost_terminal_events: 1,
+                });
+            }
+        }
+    }
+
+    fn spill(&mut self, entry: MemoryReplayEntry) {
+        let Some(dir) = &self.dir else {
+            self.record_gap(entry.sequence);
+            return;
+        };
+        let Ok(encoded) = serde_json::to_vec(entry.value.as_ref()) else {
+            self.record_gap(entry.sequence);
+            return;
+        };
+        let bytes = encoded.len() as u64;
+        if self.max_disk_bytes == 0 || self.disk_bytes.saturating_add(bytes) > self.max_disk_bytes {
+            self.record_gap(entry.sequence);
+            return;
+        }
+        let path = dir.join(format!("{:020}.json", entry.sequence));
+        let tmp = dir.join(format!(".{:020}.tmp", entry.sequence));
+        if fs::write(&tmp, &encoded).is_err() || fs::rename(&tmp, &path).is_err() {
+            let _ = fs::remove_file(&tmp);
+            self.record_gap(entry.sequence);
+            return;
+        }
+        self.disk_bytes = self.disk_bytes.saturating_add(bytes);
+        self.disk.push_back(DiskReplayEntry {
+            sequence: entry.sequence,
+            bytes,
+            path,
+            call_id: entry.value["call_id"].as_str().map(str::to_owned),
+        });
+    }
+
+    fn retain(&mut self, value: Arc<Value>) {
+        let sequence = value["sequence"].as_u64().unwrap_or(0);
+        let bytes = serde_json::to_vec(value.as_ref())
+            .map(|v| v.len() as u64)
+            .unwrap_or(0);
+        if bytes > self.max_memory_bytes {
+            self.spill(MemoryReplayEntry {
+                sequence,
+                bytes,
+                value,
+            });
+            return;
+        }
+        self.memory_bytes = self.memory_bytes.saturating_add(bytes);
+        self.memory.push_back(MemoryReplayEntry {
+            sequence,
+            bytes,
+            value,
+        });
+        while self.memory.len() > self.max_entries || self.memory_bytes > self.max_memory_bytes {
+            let Some(entry) = self.memory.pop_front() else {
+                break;
+            };
+            self.memory_bytes = self.memory_bytes.saturating_sub(entry.bytes);
+            self.spill(entry);
+        }
+    }
+
+    fn acknowledge_terminal(&mut self, sequence: u64) -> (usize, u64) {
+        let mut removed = 0usize;
+        if let Some(index) = self
+            .disk
+            .iter()
+            .position(|entry| entry.sequence == sequence)
+            && let Some(entry) = self.disk.remove(index)
+        {
+            let _ = fs::remove_file(&entry.path);
+            self.disk_bytes = self.disk_bytes.saturating_sub(entry.bytes);
+            removed = 1;
+        }
+        if let Some(index) = self
+            .memory
+            .iter()
+            .position(|entry| entry.sequence == sequence)
+            && let Some(entry) = self.memory.remove(index)
+        {
+            self.memory_bytes = self.memory_bytes.saturating_sub(entry.bytes);
+            removed = 1;
+        }
+        (removed, self.disk_bytes.saturating_add(self.memory_bytes))
+    }
+
+    fn acknowledge_gap(&mut self, through_sequence: u64) -> bool {
+        if self
+            .gap
+            .as_ref()
+            .is_some_and(|gap| gap.to_sequence <= through_sequence)
+        {
+            self.gap = None;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn snapshot(&self, through_sequence: u64) -> ReplaySnapshot {
+        let mut pending_call_ids = self
+            .disk
+            .iter()
+            .filter(|entry| entry.sequence <= through_sequence)
+            .filter_map(|entry| entry.call_id.clone())
+            .chain(
+                self.memory
+                    .iter()
+                    .filter(|entry| entry.sequence <= through_sequence)
+                    .filter_map(|entry| entry.value["call_id"].as_str().map(str::to_owned)),
+            )
+            .collect::<Vec<_>>();
+        pending_call_ids.sort();
+        pending_call_ids.dedup();
+        ReplaySnapshot {
+            disk: self
+                .disk
+                .iter()
+                .filter(|entry| entry.sequence <= through_sequence)
+                .map(|entry| (entry.sequence, entry.path.clone()))
+                .collect(),
+            memory: self
+                .memory
+                .iter()
+                .filter(|entry| entry.sequence <= through_sequence)
+                .map(|entry| entry.value.clone())
+                .collect(),
+            pending_call_ids,
+            gap: self.gap.clone(),
+        }
+    }
+
+    fn pending_count(&self) -> usize {
+        self.disk.len() + self.memory.len()
+    }
+}
+
 pub struct Observer {
     config: Option<MonitorConfig>,
     token_hash: Option<[u8; 32]>,
@@ -107,6 +377,7 @@ pub struct Observer {
     sequence: AtomicU64,
     active: Mutex<HashMap<String, CallState>>,
     events: broadcast::Sender<Arc<Value>>,
+    terminal_replay: Mutex<TerminalReplay>,
 }
 
 fn now() -> u64 {
@@ -124,6 +395,7 @@ fn bound(value: &str, bytes: usize) -> String {
 
 impl Observer {
     pub fn new(config: Option<MonitorConfig>) -> Self {
+        let boot = uuid::Uuid::new_v4().to_string();
         let token_hash = config
             .as_ref()
             .and_then(|c| std::fs::read_to_string(&c.token_file).ok())
@@ -134,9 +406,10 @@ impl Observer {
             .unwrap_or_else(default_event_buffer);
         let (events, _) = broadcast::channel(capacity);
         Self {
+            terminal_replay: Mutex::new(TerminalReplay::new(config.as_ref(), &boot)),
             config,
             token_hash,
-            boot: uuid::Uuid::new_v4().to_string(),
+            boot,
             sequence: AtomicU64::new(0),
             active: Mutex::new(HashMap::new()),
             events,
@@ -147,7 +420,16 @@ impl Observer {
         self.config.is_some()
     }
 
-    fn allowed(&self, headers: &HeaderMap) -> bool {
+    pub fn user_input_widget_key(&self) -> Option<String> {
+        let token_hash = self.token_hash?;
+        let mut hasher = Sha256::new();
+        hasher.update(b"mws-user-input-widget-v1\0");
+        hasher.update(token_hash);
+        let digest = hasher.finalize();
+        Some(digest.iter().map(|byte| format!("{byte:02x}")).collect())
+    }
+
+    pub(crate) fn allowed(&self, headers: &HeaderMap) -> bool {
         let token = headers
             .get("authorization")
             .and_then(|h| h.to_str().ok())
@@ -179,9 +461,43 @@ impl Observer {
             "call_id": call_id,
             "data": data,
         }));
+        if kind == "call_finished" {
+            self.terminal_replay
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .retain(value.clone());
+        }
         // No receiver is normal when mcpmonitor is offline. The stream is a
         // transport, not a history store.
         let _ = self.events.send(value);
+    }
+
+    fn acknowledge_terminal(&self, sequence: u64) -> (usize, u64) {
+        self.terminal_replay
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .acknowledge_terminal(sequence)
+    }
+
+    fn acknowledge_terminal_gap(&self, through_sequence: u64) -> bool {
+        self.terminal_replay
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .acknowledge_gap(through_sequence)
+    }
+
+    fn terminal_replay_snapshot(&self, through_sequence: u64) -> ReplaySnapshot {
+        self.terminal_replay
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .snapshot(through_sequence)
+    }
+
+    fn terminal_replay_pending(&self) -> usize {
+        self.terminal_replay
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .pending_count()
     }
 
     fn sanitize_args(&self, args: &Value) -> Value {
@@ -392,6 +708,86 @@ impl Observer {
             }),
         );
         Some(CallRef { id })
+    }
+
+    pub fn begin_user_input(&self, id: &str, tool: &str, args: &Value, started_at: u64) {
+        if self.config.is_none() {
+            return;
+        }
+        let arguments = redact::value(args.clone());
+        let state = CallState {
+            id: id.to_string(),
+            tool: tool.to_string(),
+            kind: "userInput".into(),
+            status: "running".into(),
+            arguments: arguments.clone(),
+            raw_output: Vec::new(),
+            truncated: false,
+            started_at,
+            ended_at: None,
+            duration_ms: None,
+            background: false,
+            process_id: None,
+            exit_code: None,
+            image: None,
+        };
+        self.active
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(id.to_string(), state);
+        self.emit(
+            Some(id),
+            "call_started",
+            json!({
+                "tool": tool,
+                "kind": "userInput",
+                "status": "running",
+                "arguments": arguments,
+                "started_at": started_at,
+                "background": false,
+            }),
+        );
+    }
+
+    pub fn user_input_state(&self, id: &str, status: &str) {
+        if self.config.is_none() {
+            return;
+        }
+        let active = self.active.lock().unwrap_or_else(|e| e.into_inner());
+        if active.contains_key(id) {
+            drop(active);
+            self.emit(Some(id), "call_state", json!({"user_input_status": status}));
+        }
+    }
+
+    pub fn finish_user_input(&self, id: &str, output: &Value) {
+        if self.config.is_none() {
+            return;
+        }
+        let finished = {
+            let mut active = self.active.lock().unwrap_or_else(|e| e.into_inner());
+            let Some(mut call) = active.remove(id) else {
+                return;
+            };
+            let ended_at = now();
+            let text = output.to_string();
+            let budget = self.output_budget();
+            call.truncated = text.len() > budget;
+            call.raw_output = bound(&text, budget).into_bytes();
+            call.status = "completed".into();
+            call.ended_at = Some(ended_at);
+            call.duration_ms = Some(ended_at.saturating_sub(call.started_at));
+            call
+        };
+        self.emit_finished(finished);
+    }
+
+    pub fn user_input_notify(&self, data: &Value) {
+        if self.config.is_none() {
+            return;
+        }
+        let call_id = data.get("id").and_then(Value::as_str);
+        self.emit(call_id, "user_input_notify", data.clone());
     }
 
     pub fn process(&self, call: &Option<CallRef>, process: u64) {
@@ -634,6 +1030,73 @@ pub async fn snapshot(State(app): State<Arc<App>>, headers: HeaderMap) -> Respon
         .into_response()
 }
 
+#[derive(Deserialize)]
+pub struct TerminalAck {
+    pub boot_id: String,
+    #[serde(default)]
+    pub sequence: Option<u64>,
+    #[serde(default)]
+    pub gap_through: Option<u64>,
+}
+
+pub async fn ack_terminal(
+    State(app): State<Arc<App>>,
+    headers: HeaderMap,
+    Json(ack): Json<TerminalAck>,
+) -> Response {
+    if !app.observer.enabled() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    if !app.observer.allowed(&headers) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    if ack.boot_id != app.observer.boot {
+        return (
+            StatusCode::CONFLICT,
+            Json(json!({
+                "error":"stale_boot",
+                "boot_id":app.observer.boot,
+            })),
+        )
+            .into_response();
+    }
+    if ack.sequence.is_none() && ack.gap_through.is_none() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error":"missing_ack_target"})),
+        )
+            .into_response();
+    }
+    let current = app.observer.sequence.load(Ordering::Relaxed);
+    if ack.sequence.is_some_and(|sequence| sequence > current)
+        || ack.gap_through.is_some_and(|sequence| sequence > current)
+    {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error":"sequence_ahead","current_sequence":current})),
+        )
+            .into_response();
+    }
+    let (removed, pending_bytes) = ack
+        .sequence
+        .map(|sequence| app.observer.acknowledge_terminal(sequence))
+        .unwrap_or_else(|| (0, 0));
+    let gap_cleared = ack
+        .gap_through
+        .is_some_and(|sequence| app.observer.acknowledge_terminal_gap(sequence));
+    Json(json!({
+        "ok":true,
+        "boot_id":app.observer.boot,
+        "sequence":ack.sequence,
+        "gap_through":ack.gap_through,
+        "gap_cleared":gap_cleared,
+        "removed":removed,
+        "pending":app.observer.terminal_replay_pending(),
+        "pending_bytes":pending_bytes,
+    }))
+    .into_response()
+}
+
 pub async fn events(State(app): State<Arc<App>>, headers: HeaderMap) -> Response {
     if !app.observer.enabled() {
         return StatusCode::NOT_FOUND.into_response();
@@ -645,6 +1108,11 @@ pub async fn events(State(app): State<Arc<App>>, headers: HeaderMap) -> Response
     let mut shutdown = app.shutdown.subscribe();
     let sync_sequence = app.observer.sequence.load(Ordering::Relaxed);
     let active = app.observer.active_sync();
+    let replay = app.observer.terminal_replay_snapshot(sync_sequence);
+    let active_call_ids = active
+        .iter()
+        .filter_map(|call| call["call_id"].as_str().map(str::to_owned))
+        .collect::<Vec<_>>();
     let boot = app.observer.boot.clone();
     let stream = async_stream::stream! {
         let hello = json!({
@@ -656,9 +1124,29 @@ pub async fn events(State(app): State<Arc<App>>, headers: HeaderMap) -> Response
             "emitted_at": now(),
             "event": "hello",
             "call_id": null,
-            "data": {"retention":"active_only"},
+            "data": {
+                "retention":"active_only",
+                "active_call_ids":active_call_ids,
+                "terminal_replay_pending":replay.disk.len() + replay.memory.len(),
+                "terminal_replay_call_ids":replay.pending_call_ids,
+                "terminal_replay_gap":replay.gap,
+            },
         });
         yield Ok::<_, Infallible>(Event::default().event("observation").data(hello.to_string()));
+        for (_, path) in replay.disk {
+            match tokio::fs::read(&path).await {
+                Ok(bytes) => {
+                    if let Ok(value) = serde_json::from_slice::<Value>(&bytes) {
+                        yield Ok(Event::default().event("observation").data(value.to_string()));
+                    }
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(_) => {}
+            }
+        }
+        for item in replay.memory {
+            yield Ok(Event::default().event("observation").data(item.to_string()));
+        }
         for item in active {
             yield Ok(Event::default().event("observation").data(item.to_string()));
         }
@@ -713,6 +1201,10 @@ mod tests {
             max_calls: Some(16),
             output_bytes: 4096,
             event_buffer: 64,
+            terminal_replay_entries: 16,
+            terminal_replay_memory_bytes: 1024 * 1024,
+            terminal_replay_disk_bytes: 8 * 1024 * 1024,
+            terminal_replay_dir: Some(temp.path().join("terminal-replay")),
         }));
         (o, temp)
     }
@@ -746,6 +1238,81 @@ mod tests {
         );
         assert!(o.active.lock().unwrap().is_empty());
         assert_eq!(o.active_snapshot()["calls"].as_array().unwrap().len(), 0);
+        assert_eq!(o.terminal_replay_pending(), 1);
+        let sequence = finished["sequence"].as_u64().unwrap();
+        let replay = o.terminal_replay_snapshot(sequence);
+        assert_eq!(replay.disk.len() + replay.memory.len(), 1);
+        let (removed, _) = o.acknowledge_terminal(sequence);
+        assert_eq!(removed, 1);
+        assert_eq!(o.terminal_replay_pending(), 0);
+    }
+
+    #[tokio::test]
+    async fn terminal_replay_spills_oldest_entries_to_disk() {
+        let (o, _temp) = observer();
+        let mut rx = o.events.subscribe();
+        let mut final_sequence = 0;
+        let mut terminal_sequences = Vec::new();
+        for n in 0..17 {
+            let call = o.begin("exec_command", &json!({"cmd":format!("true #{n}")}));
+            let _started = rx.recv().await.unwrap();
+            o.process_exit(&call, Some(0));
+            let finished = rx.recv().await.unwrap();
+            final_sequence = finished["sequence"].as_u64().unwrap();
+            terminal_sequences.push(final_sequence);
+        }
+        let replay = o.terminal_replay_snapshot(final_sequence);
+        assert_eq!(replay.disk.len(), 1);
+        assert_eq!(replay.memory.len(), 16);
+        assert!(replay.gap.is_none());
+        for sequence in terminal_sequences {
+            let (removed, _) = o.acknowledge_terminal(sequence);
+            assert_eq!(removed, 1);
+        }
+        assert_eq!(o.terminal_replay_pending(), 0);
+    }
+
+    #[tokio::test]
+    async fn terminal_ack_is_exact_and_keeps_older_unacked_finishes() {
+        let (o, _temp) = observer();
+        let mut rx = o.events.subscribe();
+        let mut terminal_sequences = Vec::new();
+        for command in ["true # first", "true # second"] {
+            let call = o.begin("exec_command", &json!({"cmd":command}));
+            let _started = rx.recv().await.unwrap();
+            o.process_exit(&call, Some(0));
+            let finished = rx.recv().await.unwrap();
+            terminal_sequences.push(finished["sequence"].as_u64().unwrap());
+        }
+        let (removed, _) = o.acknowledge_terminal(terminal_sequences[1]);
+        assert_eq!(removed, 1);
+        assert_eq!(o.terminal_replay_pending(), 1);
+        let replay = o.terminal_replay_snapshot(terminal_sequences[1]);
+        assert_eq!(replay.memory.len(), 1);
+        assert_eq!(replay.memory[0]["sequence"], terminal_sequences[0]);
+    }
+
+    #[test]
+    fn terminal_replay_overflow_records_gap_until_reconciliation_ack() {
+        let mut replay = TerminalReplay::new(None, "test-boot");
+        replay.max_entries = 1;
+        replay.max_memory_bytes = 1024 * 1024;
+        replay.max_disk_bytes = 0;
+        replay.retain(Arc::new(json!({"sequence":1,"event":"call_finished"})));
+        replay.retain(Arc::new(json!({"sequence":2,"event":"call_finished"})));
+
+        let snapshot = replay.snapshot(2);
+        let gap = snapshot.gap.expect("overflow gap");
+        assert_eq!(gap.from_sequence, 1);
+        assert_eq!(gap.to_sequence, 1);
+        assert_eq!(gap.lost_terminal_events, 1);
+        assert_eq!(snapshot.memory.len(), 1);
+
+        let (removed, _) = replay.acknowledge_terminal(2);
+        assert_eq!(removed, 1);
+        assert!(replay.gap.is_some());
+        assert!(replay.acknowledge_gap(1));
+        assert!(replay.gap.is_none());
     }
 
     #[tokio::test]

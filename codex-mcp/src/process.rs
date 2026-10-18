@@ -96,6 +96,7 @@ impl Processes {
     ) -> Result<Output> {
         anyhow::ensure!(self.alive(), "codex-mcp is shutting down");
         anyhow::ensure!(!args.cmd.contains('\0'), "cmd contains NUL");
+        validate_command_length(&args.cmd)?;
         anyhow::ensure!(
             self.config.expose_shell || args.shell.is_none(),
             "shell selection is disabled by configuration"
@@ -155,7 +156,7 @@ impl Processes {
                     &env,
                     &None,
                     TerminalSize::default(),
-                    &[],
+                    codex_utils_pty::ChildFds::Inherited(&[]),
                 )
                 .await?
             } else {
@@ -398,4 +399,44 @@ fn shell_argv(shell: &str, command: &str, login: bool) -> Result<Vec<String>> {
         "cmd" => vec![shell.into(), "/c".into(), command.into()],
         _ => anyhow::bail!("unsupported shell: {shell}"),
     })
+}
+
+// Linux MAX_ARG_STRLEN includes the terminating NUL in its 32-page budget.
+fn validate_command_length(command: &str) -> Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        // SAFETY: sysconf reads a process-independent kernel page-size value.
+        let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) };
+        anyhow::ensure!(
+            page_size > 0,
+            "unable to determine Linux argument length limit"
+        );
+        let maximum = (page_size as usize) * 32 - 1;
+        anyhow::ensure!(
+            command.len() <= maximum,
+            "{}: cmd is {} UTF-8 bytes; Linux single-argument maximum is {} bytes",
+            std::io::Error::from_raw_os_error(libc::E2BIG),
+            command.len(),
+            maximum
+        );
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = command;
+    Ok(())
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod command_length_tests {
+    #[test]
+    fn utf8_command_length_matches_the_linux_argument_boundary() {
+        let maximum = unsafe { libc::sysconf(libc::_SC_PAGESIZE) } as usize * 32 - 1;
+        for unit in ["a", "中", "😀"] {
+            let command = unit.repeat(maximum / unit.len()) + &"a".repeat(maximum % unit.len());
+            assert_eq!(command.len(), maximum);
+            super::validate_command_length(&command).unwrap();
+            let error = super::validate_command_length(&(command + "a")).unwrap_err();
+            assert!(error.to_string().contains("UTF-8 bytes"));
+            assert!(error.to_string().contains("Argument list too long"));
+        }
+    }
 }

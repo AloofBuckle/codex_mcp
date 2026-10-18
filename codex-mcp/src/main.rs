@@ -10,6 +10,7 @@ mod schema;
 #[allow(dead_code)]
 mod shell_detect;
 mod unified_exec;
+mod user_input;
 
 use anyhow::{Context, Result};
 use axum::{
@@ -43,6 +44,8 @@ pub struct Config {
     pub monitor: Option<observe::MonitorConfig>,
     #[serde(default)]
     pub cua: Option<CuaConfig>,
+    #[serde(default)]
+    pub user_input: user_input::UserInputConfig,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -121,6 +124,7 @@ impl Config {
         if let Some(cua) = &mut self.cua {
             cua.validate()?;
         }
+        self.user_input.validate()?;
         Ok(())
     }
 }
@@ -158,13 +162,22 @@ pub struct App {
     pub config: Config,
     pub auth: auth::Auth,
     pub processes: process::Processes,
+    pub user_inputs: Arc<user_input::UserInputs>,
     pub observer: Arc<observe::Observer>,
     pub cua: Option<cua::CuaProxy>,
     pub shutdown: tokio::sync::watch::Sender<bool>,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
+    #[cfg(target_os = "linux")]
+    codex_utils_pty::init_spawn_helper(std::env::args_os());
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?
+        .block_on(run())
+}
+
+async fn run() -> Result<()> {
     #[cfg(unix)]
     unsafe {
         libc::umask(0o077);
@@ -187,10 +200,16 @@ async fn main() -> Result<()> {
     let file = args.get(1).context(
         "usage: codex-mcp CONFIG.json [127.0.0.1:35121 | revoke-all] | hash-password | --version",
     )?;
+    if args.len() > 3 {
+        anyhow::bail!(
+            "usage: codex-mcp CONFIG.json [127.0.0.1:35121 | revoke-all] | hash-password | --version"
+        );
+    }
     let mut config: Config = serde_json::from_slice(&std::fs::read(file)?)?;
     config.validate()?;
     let auth = auth::Auth::open(&config.database)?;
     let observer = Arc::new(observe::Observer::new(config.monitor.clone()));
+    let user_inputs = user_input::UserInputs::new(config.user_input.clone(), observer.clone());
     let cua = match config.cua.as_ref() {
         Some(c) => Some(cua::CuaProxy::start(c, observer.clone()).await?),
         None => None,
@@ -212,6 +231,7 @@ async fn main() -> Result<()> {
         config,
         auth,
         processes,
+        user_inputs,
         observer,
         cua,
         shutdown,
@@ -224,6 +244,7 @@ async fn main() -> Result<()> {
                 break;
             };
             app.processes.reap().await;
+            app.user_inputs.reap();
         }
     });
     let router = Router::new()
@@ -237,6 +258,20 @@ async fn main() -> Result<()> {
         .route("/mcp/health", get(protocol::health))
         .route("/monitor/v1/snapshot", get(observe::snapshot))
         .route("/monitor/v2/events", get(observe::events))
+        .route("/monitor/v2/ack", post(observe::ack_terminal))
+        .route(
+            "/monitor/v2/user-input/bind",
+            post(user_input::monitor_bind),
+        )
+        .route("/monitor/v2/user-input/{id}", get(user_input::monitor_get))
+        .route(
+            "/monitor/v2/user-input/{id}/opened",
+            post(user_input::monitor_opened),
+        )
+        .route(
+            "/monitor/v2/user-input/{id}/answer",
+            post(user_input::monitor_answer),
+        )
         .route(
             "/.well-known/oauth-protected-resource",
             get(auth::resource_metadata),
@@ -266,6 +301,8 @@ async fn main() -> Result<()> {
             protocol::http_guard,
         ))
         .with_state(app.clone());
+    // This distribution uses a loopback HTTP listener, so it does not depend
+    // on the MWS-specific shared-memory IPC crates or its front-door process.
     let addr = args.get(2).map(String::as_str).unwrap_or("127.0.0.1:35121");
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!(addr, "codex-mcp ready");

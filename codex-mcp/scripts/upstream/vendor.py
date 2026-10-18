@@ -16,6 +16,7 @@ CRATES = {
     "codex-utils-pty": "utils/pty",
     "codex-utils-absolute-path": "utils/absolute-path",
     "codex-utils-path-uri": "utils/path-uri",
+    "codex-utils-cargo-bin": "utils/cargo-bin",
     "codex-apply-patch": "apply-patch",
 }
 MANAGED = [
@@ -105,7 +106,7 @@ def update_dependencies(product, upstream):
         if name not in official:
             raise ValueError("upstream dependency not found: " + name)
         value = official[name]
-        if isinstance(value, dict) and ("path" in value or "git" in value):
+        if isinstance(value, dict) and ("path" in value or "git" in value) and name != "runfiles":
             raise ValueError("new upstream nonregistry dependency requires an adapter: " + name)
         # Carry the gateway's required features, but source version constraints from upstream.
         options = dict(old[name]) if isinstance(old.get(name), dict) else {}
@@ -113,8 +114,22 @@ def update_dependencies(product, upstream):
             options["version"] = value
         else:
             options.update(value)
-        for key in ["path", "git", "branch", "rev", "tag"]:
-            options.pop(key, None)
+        # Keep already-upgraded registry dependencies when upstream's minimum
+        # is older. The compatibility projection below targets these APIs.
+        previous = old.get(name)
+        previous = previous.get("version") if isinstance(previous, dict) else previous
+        def minimum_version(version):
+            match = re.match(r"[\^~=<> ]*(\d+)(?:\.(\d+))?(?:\.(\d+))?", version or "")
+            return tuple(int(part or 0) for part in match.groups()) if match else ()
+        if minimum_version(previous) > minimum_version(options.get("version")):
+            options["version"] = previous
+        if name != "runfiles":
+            for key in ["path", "git", "branch", "rev", "tag"]:
+                options.pop(key, None)
+        elif "git" in options:
+            options.pop("version", None)
+            if isinstance(old.get(name), dict) and old[name].get("git") == options["git"]:
+                options["rev"] = old[name].get("rev", options.get("rev"))
         resolved[name] = options["version"] if set(options) == {"version"} else options
     text = read(product / "Cargo.toml")
     block = "[workspace.dependencies]\n" + "".join(
@@ -187,6 +202,24 @@ def project(upstream, product):
         'winapi = { version = "0.3.9", features = [\n    "std",',
     )
     write(pty, text)
+    # Registry major upgrades required by the MWS dependency policy.
+    invocation = patch / "src/invocation.rs"
+    write(invocation, read(invocation).replace("m.captures.iter()", "m.captures().iter()"))
+    for relative in ["src/lib.rs", "src/api_path_string.rs"]:
+        file = product / "vendor/codex-utils-path-uri" / relative
+        text = read(file).replace("fn schema_name() -> String", "fn schema_name() -> std::borrow::Cow<'static, str>")
+        text = text.replace('"PathUri".to_string()', '"PathUri".into()')
+        text = text.replace('"LegacyAppPathString".to_string()', '"LegacyAppPathString".into()')
+        text = text.replace("schemars::gen::SchemaGenerator", "schemars::SchemaGenerator")
+        text = text.replace("schemars::r#gen::SchemaGenerator", "schemars::SchemaGenerator")
+        text = text.replace("schemars::schema::Schema", "schemars::Schema")
+        write(file, text)
+    constructors = product / "vendor/codex-utils-pty/src/spawn_helper_tests.rs"
+    write(constructors, read(constructors).replace("#[ctor::ctor]", "#[ctor::ctor(unsafe)]"))
+    cargo_bin = product / "vendor/codex-utils-cargo-bin/src/lib.rs"
+    text = re.sub(r"runfiles::rlocation!\(runfiles, (&\w+)\)",
+                  r'runfiles.rlocation_from(\1, option_env!("REPOSITORY_NAME").unwrap_or(""))', read(cargo_bin))
+    write(cargo_bin, text)
 
     fs = product / "vendor/mcpx-local-fs"
     if fs.exists():
@@ -196,7 +229,8 @@ def project(upstream, product):
     shutil.copy2(templates / "fs-Cargo.toml", fs / "Cargo.toml")
     write(fs / "src/lib.rs", read(templates / "fs-lib.rs"))
     shutil.rmtree(fs / "template-source")
-    for name in ["no_follow", "regular_file.rs", "regular_file_tests.rs"]:
+    for name in ["no_follow", "regular_file.rs", "regular_file_tests.rs",
+                 "local_file_system_read.rs", "local_file_system_read_tests.rs"]:
         source = upstream / "codex-rs/exec-server/src" / name
         if source.is_dir():
             for file in source.rglob("*"):
@@ -204,10 +238,16 @@ def project(upstream, product):
                     copy(file, fs / "src" / name / file.relative_to(source))
         else:
             copy(source, fs / "src" / name)
+    read_tests = fs / "src/local_file_system_read_tests.rs"
+    write(read_tests, remove_sandbox_parameters(read(read_tests)).replace(
+        "crate::local_file_system::LOCAL_FS", "crate::LOCAL_FS"
+    ))
+    regular = fs / "src/regular_file.rs"
+    # This subset only consumes the synchronous opener through cancellable reads.
+    write(regular, read(regular).replace(rust_function(read(regular), "open"), ""))
     source = read(upstream / "codex-rs/exec-server/src/local_file_system.rs")
     direct = source[source.index("impl DirectFileSystem {") :]
     methods = [
-        "open_file_for_read",
         "canonicalize",
         "read_file",
         "write_file",
@@ -218,7 +258,7 @@ def project(upstream, product):
     body = "\n".join(remove_sandbox_parameters(rust_function(direct, n)) for n in methods)
     helpers = "\n".join(
         rust_function(source, n)
-        for n in ["file_too_large_error", "file_metadata", "system_time_to_unix_ms"]
+        for n in ["file_metadata", "system_time_to_unix_ms"]
     )
     header = """//! Direct file methods extracted from Codex and compiled into codex-mcp.
 use crate::*;
@@ -226,8 +266,7 @@ use codex_utils_absolute_path::AbsolutePathBuf;
 use codex_utils_path_uri::PathUri;
 use std::sync::{Arc,LazyLock};
 use std::time::{SystemTime,UNIX_EPOCH};
-use tokio::{io,io::AsyncReadExt};
-const MAX_READ_FILE_BYTES:u64=512*1024*1024;
+use tokio::io;
 pub static LOCAL_FS:LazyLock<Arc<dyn ExecutorFileSystem>>=LazyLock::new(||Arc::new(LocalFileSystem));
 pub struct LocalFileSystem;
 """
@@ -284,8 +323,10 @@ def record(upstream, product, mapping, repository, ref, commit):
             "Remove unused elevated-Windows-sandbox shell fallback",
             "Direct filesystem extraction with local-only interface",
             "No standalone executable entrypoint, core approval engine, policy engine or audit engine",
-            "Keep codex-mcp four-tool contract; upstream dependency versions follow workspace constraints",
+            "Keep codex-mcp six-tool contract; upstream dependency versions follow workspace constraints",
             "Enable winapi std on Windows",
+            "Adapt schemars 1, tree-sitter 0.27, ctor 1 and Cargo builds of latest runfiles",
+            "Preserve newer local registry minimums and Git revisions during projection",
         ],
         copied_files=records,
     )

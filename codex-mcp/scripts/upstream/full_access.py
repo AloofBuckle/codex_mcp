@@ -23,7 +23,10 @@ def remove_sandbox_parameters(source):
 
 
 def shell_full_access(source):
-    start = source.index("// Store PowerShell can be inaccessible")
+    marker = re.search(r"(?m)^// Store PowerShell.*$", source)
+    if not marker:
+        raise ValueError("upstream shell detector no longer exposes the Store PowerShell block")
+    start = marker.start()
     end = source.index("fn get_shell_path(", start)
     source = source[:start] + source[end:]
     start = source.index("/// Returns a replacement only when shell_path targets Store PowerShell")

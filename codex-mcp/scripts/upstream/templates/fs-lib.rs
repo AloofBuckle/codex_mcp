@@ -5,6 +5,15 @@ use std::{future::Future, io, pin::Pin};
 mod local;
 mod no_follow;
 mod regular_file;
+mod local_file_system_read;
+pub const FILE_READ_CHUNK_SIZE: usize = 64 * 1024;
+mod protocol {
+    pub(crate) enum FsOpenMode {
+        Read,
+        #[allow(dead_code)] // Present in the upstream regular-file interface.
+        Replace,
+    }
+}
 pub use local::{LOCAL_FS, LocalFileSystem};
 pub use regular_file::read_sensitive_file_to_string;
 

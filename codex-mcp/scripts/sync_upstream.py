@@ -140,6 +140,18 @@ def install_candidate(root, candidate, baseline, backup_dir, commit):
                     target.unlink()
             (rollback / name).rename(target)
         raise
+    # Candidate projection deliberately preserves upstream mtimes for provenance,
+    # but an existing Cargo target can then look newer than freshly installed
+    # sources and incorrectly reuse stale rlibs. Mark every managed source as
+    # freshly installed after the atomic copy succeeds.
+    for name in installed:
+        path = root / name
+        if path.is_file():
+            os.utime(path, None)
+        elif path.is_dir():
+            for file in path.rglob("*"):
+                if file.is_file():
+                    os.utime(file, None)
     shutil.rmtree(rollback)
     return dict(commit=commit, backup=str(backup), backup_sha256=sha(backup))
 
@@ -148,6 +160,26 @@ def validate(candidate, config, logs):
     python = config.get("sdk_python") or sys.executable
     if os.name != "posix" or not Path("/proc").exists():
         raise RuntimeError("Full validation must run on Linux; --check works on any host")
+    sdk_available = subprocess.run(
+        [python, "-c", "import mcp, httpx"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    ).returncode == 0
+    if config.get("sdk_python") and not sdk_available:
+        raise RuntimeError(f"SDK Python cannot import mcp and httpx: {python}")
+    if not sdk_available:
+        print("Optional MCP Python SDK integration test skipped (install mcp and httpx)", flush=True)
+    integration_command = [
+        python,
+        "tests/integration.py",
+        "--binary",
+        "target/release/codex-mcp",
+        "--report",
+        str(logs / "integration.json"),
+    ]
+    if sdk_available:
+        integration_command.append("--sdk")
     commands = [
         ["cargo", "check", "-p", "codex-mcp"],
         ["cargo", "fmt", "-p", "codex-mcp", "-p", "mcpx-local-fs", "-p", "codex-apply-patch"],
@@ -168,15 +200,7 @@ def validate(candidate, config, logs):
         [python, "-m", "unittest", "discover", "-s", "tests", "-p", "test_upstream_sync.py"],
         [python, "scripts/test_libraries.py", "--report", str(logs / "unit-tests.json")],
         ["cargo", "build", "--release", "--locked", "-p", "codex-mcp"],
-        [
-            python,
-            "tests/integration.py",
-            "--binary",
-            "target/release/codex-mcp",
-            "--report",
-            str(logs / "integration.json"),
-            "--sdk",
-        ],
+        integration_command,
         [python, "tests/cua_resource.py", "--binary", "target/release/codex-mcp"],
         [
             python,
@@ -209,6 +233,7 @@ def validate(candidate, config, logs):
         run(command, candidate, logs / "validation.log")
     return dict(
         passed=True,
+        sdk_integration=sdk_available,
         binary=str(candidate / "target/release/codex-mcp"),
         binary_sha256=sha(candidate / "target/release/codex-mcp"),
         integration=json.loads((logs / "integration.json").read_text()),
@@ -305,7 +330,9 @@ def main():
             record(upstream, candidate, mapping, repo, ref, commit)
             run([sys.executable, "scripts/verify_vendor.py"], candidate, logs / "validation.log")
             if args.apply:
-                backup_dir = Path(settings.get("backup_dir", "/files/transfer")).expanduser()
+                backup_dir = Path(settings.get("backup_dir", "work/backups")).expanduser()
+                if not backup_dir.is_absolute():
+                    backup_dir = root / backup_dir
                 report["installation"] = install_candidate(
                     root, candidate, baseline, backup_dir, commit
                 )
