@@ -1,0 +1,10 @@
+{
+  "issuer": "https://identity.example.com/oidc",
+  "client_id": "mcpmonitor-web",
+  "client_secret": "REPLACE_WITH_A_LONG_SECRET_FROM_OIDC_PROVIDER",
+  "redirect_uri": "https://monitor.example.com/mcpmonitor/auth/callback",
+  "subject": "REPLACE_WITH_ALLOWED_USER_SUBJECT",
+  "scopes": "openid profile email",
+  "session_ttl_seconds": 2592000,
+  "secure_cookie": true
+}

@@ -1,0 +1,5 @@
+# Replace this host and configure DNS + TLS before publishing.
+monitor.example.com {
+    # mcpmonitor listens on loopback only; Caddy terminates TLS.
+    reverse_proxy 127.0.0.1:35122
+}

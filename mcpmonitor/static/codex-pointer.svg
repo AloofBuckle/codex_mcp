@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <filter id="glowFar" x="-80%" y="-80%" width="260%" height="260%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="42"/>
+    </filter>
+    <filter id="glowMid" x="-80%" y="-80%" width="260%" height="260%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+    <filter id="glowNear" x="-80%" y="-80%" width="260%" height="260%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="11"/>
+    </filter>
+  </defs>
+
+  <!-- Scale the artwork to 80% around the 13px/64px cursor hotspot
+       (104,104 in this 512x512 viewBox), so the visual radius shrinks while
+       the click point stays exactly where it was. -->
+  <g transform="translate(20.8 20.8) scale(0.8)">
+  <path id="cursorOuter" d="
+    M168 110
+    C148 103 112 112 100 141
+    C95 156 99 171 104 185
+    L175 397
+    C180 414 197 425 214 427
+    C236 429 256 417 263 395
+    L289 311
+    C291 304 296 300 303 298
+    L388 272
+    C405 267 415 253 417 235
+    C420 218 411 201 395 192
+    C392 190 389 189 384 187
+    L168 110
+    Z"/>
+
+  <use href="#cursorOuter" fill="#006BFF" opacity="0.48" filter="url(#glowFar)"/>
+  <use href="#cursorOuter" fill="#087CFF" opacity="0.62" filter="url(#glowMid)"/>
+  <use href="#cursorOuter" fill="#35A6FF" opacity="0.72" filter="url(#glowNear)"/>
+
+  <use href="#cursorOuter" fill="#FFFFFF"/>
+
+  <path d="
+    M159 135
+    C144 130 128 136 123 152
+    C122 157 123 163 125 170
+    L196 381
+    C200 393 210 401 222 401
+    C233 401 243 393 247 382
+    L274 296
+    C276 290 281 285 288 283
+    L372 257
+    C382 254 388 246 390 236
+    C391 225 384 215 374 211
+    L159 135
+    Z"
+    fill="#050505"/>
+  </g>
+</svg>

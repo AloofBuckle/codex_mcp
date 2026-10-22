@@ -1,0 +1,22 @@
+[Unit]
+Description=Standalone MCP Monitor (HTTP-only)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=mcpmonitor
+Group=mcpmonitor
+ExecStart=/opt/mcpmonitor/bin/mcpmonitor /etc/mcpmonitor/config.json 127.0.0.1:35122
+WorkingDirectory=/var/lib/mcpmonitor
+Restart=on-failure
+RestartSec=2
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mcpmonitor
+# Configure access to the files referenced by config.json and oidc.json.
+
+[Install]
+WantedBy=multi-user.target

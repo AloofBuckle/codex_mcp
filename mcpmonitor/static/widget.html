@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <title>CUA Live</title>
+    <link rel="stylesheet" href="/mcpmonitor/widget/widget.css" />
+    <script src="/mcpmonitor/widget/widget.js" defer></script>
+  </head>
+  <body>
+    <main class="viewer" id="viewer">
+      <header class="toolbar">
+        <div class="surface-tabs" role="tablist" aria-label="CUA surface">
+          <button
+            class="surface-tab active"
+            id="tab-browser"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            >Browser</button
+          >
+          <button class="surface-tab" id="tab-native" type="button" role="tab" aria-selected="false"
+            >Native</button
+          >
+        </div>
+        <div class="toolbar-spacer"></div>
+        <span class="status" id="status"><i></i><span>连接中</span></span>
+        <button
+          class="icon-button hidden"
+          id="relative"
+          type="button"
+          aria-label="Native 相对鼠标"
+          title="Native 相对鼠标"
+          >⌖</button
+        >
+        <button class="icon-button" id="expand" type="button" aria-label="展开 CUA" title="展开"
+          >↗</button
+        >
+      </header>
+
+      <section class="stage" id="stage" tabindex="-1" aria-label="CUA 实时画面">
+        <canvas id="canvas" width="1920" height="1080" aria-label="CUA live video"></canvas>
+        <div id="native-cursor-overlay" class="native-cursor-overlay" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M3 2.5 18.8 14l-7.4 1.1 4.2 6.4-3.5 2.1-4.1-6.4L3 22Z" />
+          </svg>
+        </div>
+        <div class="placeholder" id="placeholder">
+          <span class="spinner"></span>
+          <strong id="placeholder-title">正在连接 Browser</strong>
+        </div>
+        <textarea
+          id="browser-input"
+          class="browser-input"
+          aria-label="Browser 键盘输入"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="none"
+          spellcheck="false"
+        ></textarea>
+      </section>
+    </main>
+  </body>
+</html>
