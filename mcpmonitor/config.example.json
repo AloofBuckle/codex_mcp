@@ -1,0 +1,13 @@
+{
+  "public_origin": "https://monitor.example.com",
+  "codex_http_url": "http://127.0.0.1:35121",
+  "upstream_token_file": "/etc/mcpmonitor/observer-token",
+  "oidc_config": "/etc/mcpmonitor/oidc.json",
+  "secure_cookie": true,
+  "database": "/var/lib/mcpmonitor/history.sqlite",
+  "browser_ws_url": null,
+  "browser_token_file": null,
+  "native_live_url": null,
+  "native_user_input_token_file": null,
+  "web_push": null
+}

@@ -10,6 +10,8 @@
 
 暴露本地资源给MCP客户端，实际上就是利用Business的网页聊天额度不消耗Codex额度跑命令；此项目就是在网页端自举的，Codex MCP 的官方源码导入从 [codex-mcp/scripts/upstream/vendor.py](codex-mcp/scripts/upstream/vendor.py) 开始，cua_repl 的 MCP 与持久 REPL 入口分别位于 [cua-repl/src/mcp.mjs](cua-repl/src/mcp.mjs) 和 [cua-repl/src/repl/worker.mjs](cua-repl/src/repl/worker.mjs)；灵感来源thiagomendes/mcpx，但本项目没有使用MCPX的代码
 
+独立的监控控制台位于 [mcpmonitor/](mcpmonitor/README.md)：已改成 HTTP/SSE 对接 Codex MCP，去除了对原 MWS UDS 与 Pingora 的代码依赖；拆分后暂不包含原来的共享内存浏览器音视频工作进程，具体功能范围和部署说明见子目录 README。
+
 2.bug
 
 安装cua_repl插件后会导致ChatGPT Work Mode中自带的浏览器功能出bug唤不起来，暂时没定位到原因

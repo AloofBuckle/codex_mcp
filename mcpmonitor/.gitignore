@@ -1,0 +1,10 @@
+/target/
+/.cargo/
+config.json
+oidc.json
+*.sqlite
+*.sqlite-*
+*.pem
+*.key
+*.log
+__pycache__/

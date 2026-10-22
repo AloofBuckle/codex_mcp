@@ -1,0 +1,237 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background: #050505;
+  color: #f4f4f5;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #050505;
+}
+button,
+textarea {
+  font: inherit;
+}
+.viewer {
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  display: grid;
+  grid-template-rows: 42px minmax(0, 1fr);
+  background: #050505;
+  border: 1px solid #ffffff18;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #ffffff12;
+  background: #0b0b0c;
+}
+.surface-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 9px;
+  background: #ffffff0d;
+}
+.surface-tab {
+  border: 0;
+  background: transparent;
+  color: #a1a1aa;
+  border-radius: 7px;
+  padding: 5px 10px;
+  line-height: 18px;
+  cursor: pointer;
+}
+.surface-tab:hover {
+  color: #e4e4e7;
+  background: #ffffff0d;
+}
+.surface-tab.active {
+  color: #fafafa;
+  background: #ffffff18;
+}
+.toolbar-spacer {
+  flex: 1;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #a1a1aa;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #71717a;
+  box-shadow: 0 0 0 2px #71717a22;
+}
+.status.online i {
+  background: #4ade80;
+  box-shadow: 0 0 0 2px #4ade8030;
+}
+.status.error i {
+  background: #fb7185;
+  box-shadow: 0 0 0 2px #fb718530;
+}
+.icon-button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #d4d4d8;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 17px;
+}
+.icon-button:hover {
+  background: #ffffff12;
+  color: #fff;
+}
+.hidden {
+  display: none !important;
+}
+.stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: #000;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  outline: none;
+}
+.native-cursor-overlay {
+  position: absolute;
+  z-index: 4;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  display: none;
+  pointer-events: none;
+  transform: translate(-2px, -2px);
+  will-change: left, top;
+}
+.native-cursor-overlay.visible {
+  display: block;
+}
+.native-cursor-overlay svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  overflow: visible;
+}
+.native-cursor-overlay path {
+  fill: #fff;
+  stroke: #111;
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #a1a1aa;
+  background: #050505;
+}
+.placeholder strong {
+  font-size: 13px;
+  color: #d4d4d8;
+  font-weight: 550;
+}
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ffffff20;
+  border-top-color: #d4d4d8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.viewer.interactive .stage {
+  cursor: default;
+}
+.viewer:not(.interactive) .stage {
+  cursor: zoom-in;
+}
+.browser-input {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: 2px;
+  height: 2px;
+  opacity: 0.01;
+  resize: none;
+  border: 0;
+  padding: 0;
+  pointer-events: none;
+  color: transparent;
+  background: transparent;
+  caret-color: transparent;
+}
+.browser-input.ime {
+  width: min(360px, 70%);
+  height: 44px;
+  opacity: 0.98;
+  pointer-events: auto;
+  color: #f4f4f5;
+  caret-color: #f4f4f5;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ffffff2a;
+  background: #18181b;
+  outline: none;
+}
+@media (max-width: 520px) {
+  .viewer {
+    border-radius: 10px;
+  }
+  .status span {
+    display: none;
+  }
+  .surface-tab {
+    padding-inline: 8px;
+  }
+}

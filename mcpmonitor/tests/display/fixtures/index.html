@@ -1,0 +1,155 @@
+<!doctype html>
+<html
+  ><head
+    ><meta charset="utf-8" /><title>mcpmonitor display native acceptance</title
+    ><style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #111827;
+        color: #eef3ff;
+        font: 18px sans-serif;
+      }
+      header {
+        height: 84px;
+        background: #1964c6;
+        padding: 22px;
+      }
+      main {
+        padding: 28px;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+        padding: 12px;
+        margin: 8px;
+      }
+      #target {
+        width: 200px;
+        height: 100px;
+        background: #ec4455;
+        border: 0;
+        color: white;
+      }
+      #scroll {
+        width: 600px;
+        height: 150px;
+        overflow: auto;
+        border: 2px solid #40d090;
+      }
+      #content {
+        height: 1500px;
+        padding: 12px;
+        background: linear-gradient(#123123, #477777);
+      }
+      #bottom {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 24px;
+        background: #f5c400;
+        color: black;
+        font-size: 14px;
+      }
+      canvas {
+        position: fixed;
+        right: 24px;
+        top: 118px;
+        width: 400px;
+        height: 180px;
+      }
+      #out {
+        white-space: pre-wrap;
+        font: 14px monospace;
+      }
+    </style></head
+  ><body
+    ><header>MONITOR-RS / Native Wayland / GPU-only video path</header
+    ><main>
+      <button id="target">TRUSTED CLICK TARGET</button
+      ><input id="edit" placeholder="Keyboard input" /><select id="select"
+        ><option>Alpha</option
+        ><option>Beta</option
+        ><option>Gamma</option></select
+      >
+      <button id="popup" onclick="window.open('/popup.html', 'testpopup', 'width=480,height=320')"
+        >Open separate window</button
+      >
+      <div id="scroll"><div id="content">High-resolution wheel test</div></div
+      ><pre id="out">Ready</pre><canvas id="animation" width="400" height="180"></canvas></main
+    ><div id="bottom">BOTTOM / Orientation check / 1440 x 1080 virtual output</div>
+    <script>
+      window.probe = {
+        events: [],
+        keys: {},
+        clicks: 0,
+        wheelTotal: 0,
+        wheelX: 0,
+        raf: [],
+        frames: 0,
+      };
+      for (const type of [
+        'pointermove',
+        'pointerdown',
+        'pointerup',
+        'click',
+        'contextmenu',
+        'keydown',
+        'keyup',
+        'wheel',
+      ])
+        addEventListener(
+          type,
+          (e) => {
+            const p = {
+              type,
+              isTrusted: e.isTrusted,
+              target: e.target.id,
+              x: e.clientX,
+              y: e.clientY,
+              key: e.key,
+              code: e.code,
+              ctrl: e.ctrlKey,
+              shift: e.shiftKey,
+              deltaY: e.deltaY,
+              deltaX: e.deltaX,
+            };
+            probe.events.push(p);
+            if (probe.events.length > 3000) probe.events.shift();
+            if (type === 'click' && e.target.id === 'target') probe.clicks++;
+            if (type === 'keydown') probe.keys[e.code] = true;
+            if (type === 'keyup') delete probe.keys[e.code];
+            if (type === 'wheel') {
+              probe.wheelTotal += e.deltaY;
+              probe.wheelX += e.deltaX;
+            }
+            document.querySelector('#out').textContent = JSON.stringify(
+              { last: p, clicks: probe.clicks, keys: probe.keys, wheel: probe.wheelTotal },
+              null,
+              2,
+            );
+          },
+          { passive: true, capture: true },
+        );
+      const ctx = document.querySelector('canvas').getContext('2d');
+      function frame(t) {
+        probe.frames++;
+        probe.raf.push(t);
+        if (probe.raf.length > 1200) probe.raf.shift();
+        ctx.fillStyle = '#204090';
+        ctx.fillRect(0, 0, 400, 180);
+        ctx.fillStyle = '#00eb9a';
+        ctx.fillRect((t / 3) % 340, 50, 60, 60);
+        ctx.fillStyle = 'white';
+        ctx.font = '24px monospace';
+        ctx.fillText('FRAME ' + probe.frames, 14, 32);
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    </script></body
+  ></html
+>
